@@ -533,27 +533,88 @@ textarea,input{user-select:text}
 </head>
 <body>
 <div id="login-screen" style="display:none;min-height:100vh;min-height:100dvh;background:var(--bg);align-items:center;justify-content:center;padding:24px;flex-direction:column;gap:0">
-  <div id="login-card" style="width:100%;max-width:380px;background:var(--surf);border:1px solid var(--brd);border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.5)">
+  <div id="login-card" style="width:100%;max-width:400px;background:var(--surf);border:1px solid var(--brd);border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.5)">
+
     <!-- Header -->
-    <div style="background:linear-gradient(135deg,#1a1f30,#0f1117);padding:32px 28px 28px;text-align:center">
-      <div style="width:56px;height:56px;background:linear-gradient(135deg,#c8892a,#f0b040);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px;box-shadow:0 8px 24px rgba(200,137,42,.4)">📋</div>
-      <div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--tx);letter-spacing:-.02em">Vibenith</div>
-      <div style="font-size:13px;color:var(--mut);margin-top:6px">Entre ou crie sua conta</div>
+    <div style="background:linear-gradient(135deg,#1a1f30,#0f1117);padding:32px 28px 24px;text-align:center">
+      <div style="width:60px;height:60px;background:linear-gradient(135deg,#c8892a,#f0b040);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px;box-shadow:0 8px 24px rgba(200,137,42,.4)">📋</div>
+      <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--tx);letter-spacing:-.02em">Vibenith</div>
+      <div style="font-size:13px;color:var(--mut);margin-top:5px">Organize sua vida</div>
     </div>
-    <!-- Form -->
-    <div style="padding:28px">
-      <div id="li-err" style="display:none;background:rgba(255,82,99,.1);border:1px solid rgba(255,82,99,.3);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:16px;font-family:'Syne',sans-serif;font-weight:700;text-align:center"></div>
+
+    <!-- Tab switcher -->
+    <div style="display:flex;margin:20px 20px 0;background:var(--col);border-radius:12px;padding:3px;border:1px solid var(--brd)">
+      <button id="tab-login" onclick="switchAuthTab('login')" style="flex:1;padding:10px;border-radius:9px;border:none;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;background:var(--acc);color:#fff">
+        Entrar
+      </button>
+      <button id="tab-register" onclick="switchAuthTab('register')" style="flex:1;padding:10px;border-radius:9px;border:none;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;background:transparent;color:var(--mut)">
+        Criar conta
+      </button>
+    </div>
+
+    <!-- Error msg -->
+    <div id="li-err" style="display:none;margin:16px 20px 0;background:rgba(255,82,99,.1);border:1px solid rgba(255,82,99,.3);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--red);font-family:'Syne',sans-serif;font-weight:700;text-align:center"></div>
+    <!-- Success msg -->
+    <div id="li-ok" style="display:none;margin:16px 20px 0;background:rgba(34,211,160,.1);border:1px solid rgba(34,211,160,.3);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--grn);font-family:'Syne',sans-serif;font-weight:700;text-align:center"></div>
+
+    <!-- LOGIN FORM -->
+    <div id="form-login" style="padding:20px 20px 28px">
       <div style="margin-bottom:14px">
         <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);display:block;margin-bottom:7px">Usuário</label>
-        <input id="li-user" type="text" placeholder="ex: artur123" maxlength="30" autocomplete="username" style="width:100%;background:var(--col);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:15px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;-webkit-appearance:none;transition:border .15s" onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--brd)'" onkeydown="if(event.key==='Enter')document.getElementById('li-pass').focus()">
+        <input id="li-user" type="text" placeholder="Seu usuário" maxlength="30" autocomplete="username"
+          style="width:100%;background:var(--col);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:15px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;-webkit-appearance:none;transition:border .15s"
+          onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--brd)'"
+          onkeydown="if(event.key==='Enter')document.getElementById('li-pass').focus()">
       </div>
       <div style="margin-bottom:20px">
         <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);display:block;margin-bottom:7px">Senha</label>
-        <input id="li-pass" type="password" placeholder="Mínimo 4 caracteres" maxlength="50" autocomplete="current-password" style="width:100%;background:var(--col);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:15px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;-webkit-appearance:none;transition:border .15s" onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--brd)'" onkeydown="if(event.key==='Enter')doLogin()">
+        <input id="li-pass" type="password" placeholder="Sua senha" maxlength="50" autocomplete="current-password"
+          style="width:100%;background:var(--col);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:15px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;-webkit-appearance:none;transition:border .15s"
+          onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--brd)'"
+          onkeydown="if(event.key==='Enter')doLogin()">
       </div>
-      <button id="li-btn" onclick="doLogin()" style="width:100%;padding:15px;background:var(--acc);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;cursor:pointer;transition:background .15s;letter-spacing:.02em">Entrar / Criar conta</button>
-      <div style="font-size:12px;color:var(--mut);text-align:center;margin-top:16px;line-height:1.6">Se o usuário não existir, <strong style="color:var(--tx)">uma conta nova é criada</strong> automaticamente.<br>Use o mesmo usuário e senha em todos os dispositivos.</div>
+      <button id="li-btn" onclick="doLogin()"
+        style="width:100%;padding:15px;background:var(--acc);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;cursor:pointer;transition:background .15s">
+        Entrar
+      </button>
+      <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--mut)">
+        Não tem conta? <span onclick="switchAuthTab('register')" style="color:var(--acc);font-weight:700;cursor:pointer">Criar conta</span>
+      </div>
     </div>
+
+    <!-- REGISTER FORM -->
+    <div id="form-register" style="display:none;padding:20px 20px 28px">
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);display:block;margin-bottom:7px">Usuário</label>
+        <input id="reg-user" type="text" placeholder="Escolha um usuário" maxlength="30" autocomplete="username"
+          style="width:100%;background:var(--col);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:15px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;-webkit-appearance:none;transition:border .15s"
+          onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--brd)'"
+          onkeydown="if(event.key==='Enter')document.getElementById('reg-pass').focus()">
+        <div style="font-size:11px;color:var(--mut);margin-top:5px">Só letras, números e _ (sem espaços)</div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);display:block;margin-bottom:7px">Senha</label>
+        <input id="reg-pass" type="password" placeholder="Mínimo 4 caracteres" maxlength="50" autocomplete="new-password"
+          style="width:100%;background:var(--col);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:15px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;-webkit-appearance:none;transition:border .15s"
+          onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--brd)'"
+          onkeydown="if(event.key==='Enter')document.getElementById('reg-pass2').focus()">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);display:block;margin-bottom:7px">Confirmar senha</label>
+        <input id="reg-pass2" type="password" placeholder="Repita a senha" maxlength="50" autocomplete="new-password"
+          style="width:100%;background:var(--col);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:15px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;-webkit-appearance:none;transition:border .15s"
+          onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--brd)'"
+          onkeydown="if(event.key==='Enter')doRegister()">
+      </div>
+      <button id="reg-btn" onclick="doRegister()"
+        style="width:100%;padding:15px;background:var(--grn);color:#0f1117;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;cursor:pointer;transition:background .15s">
+        Criar conta
+      </button>
+      <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--mut)">
+        Já tem conta? <span onclick="switchAuthTab('login')" style="color:var(--acc);font-weight:700;cursor:pointer">Entrar</span>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -797,42 +858,71 @@ async function hashPassword(pw){
 }
 
 // ─── AUTH ───
+// ─── AUTH UI ───
+function switchAuthTab(tab){
+  const isLogin=tab==='login';
+  document.getElementById('form-login').style.display=isLogin?'block':'none';
+  document.getElementById('form-register').style.display=isLogin?'none':'block';
+  document.getElementById('tab-login').style.background=isLogin?'var(--acc)':'transparent';
+  document.getElementById('tab-login').style.color=isLogin?'#fff':'var(--mut)';
+  document.getElementById('tab-register').style.background=isLogin?'transparent':'var(--acc)';
+  document.getElementById('tab-register').style.color=isLogin?'var(--mut)':'#fff';
+  clearAuthMsgs();
+}
+function clearAuthMsgs(){
+  document.getElementById('li-err').style.display='none';
+  document.getElementById('li-ok').style.display='none';
+}
+function showAuthErr(msg){
+  const e=document.getElementById('li-err');e.textContent=msg;e.style.display='block';
+  document.getElementById('li-ok').style.display='none';
+  const card=document.getElementById('login-card');
+  card.style.animation='none';requestAnimationFrame(()=>{card.style.animation='shake .4s';});
+}
+function showAuthOk(msg){
+  const e=document.getElementById('li-ok');e.textContent=msg;e.style.display='block';
+  document.getElementById('li-err').style.display='none';
+}
+
 async function doLogin(){
   const u=document.getElementById('li-user').value.trim().toLowerCase();
   const p=document.getElementById('li-pass').value;
-  if(!u||!p){shakeLogin('Preencha usuário e senha');return;}
-  setLoginLoading(true);
+  if(!u){showAuthErr('Informe o usuário');return;}
+  if(!p){showAuthErr('Informe a senha');return;}
+  const btn=document.getElementById('li-btn');btn.disabled=true;btn.textContent='Entrando…';
   try{
     const hash=await hashPassword(p);
-    // Check if user exists
     const r=await fetch(`${SB_URL}/rest/v1/users?username=eq.${encodeURIComponent(u)}&select=username,password_hash`,{headers:sbHeaders()});
     const rows=await r.json();
-    if(rows.length===0){
-      // New user — create account
-      const cr=await fetch(`${SB_URL}/rest/v1/users`,{method:'POST',headers:{...sbHeaders(),'Prefer':'return=minimal'},body:JSON.stringify({username:u,password_hash:hash})});
-      if(!cr.ok){shakeLogin('Erro ao criar conta. Tente novamente.');setLoginLoading(false);return;}
-      currentUser=u;
-      localStorage.setItem('vibenith_user',u);
-      enterApp(true);
-    } else {
-      // Existing user — check password
-      if(rows[0].password_hash!==hash){shakeLogin('Senha incorreta');setLoginLoading(false);return;}
-      currentUser=u;
-      localStorage.setItem('vibenith_user',u);
-      enterApp(false);
-    }
-  }catch(e){shakeLogin('Sem conexão. Tente novamente.');setLoginLoading(false);}
+    if(rows.length===0){showAuthErr('Usuário não encontrado. Crie uma conta!');btn.disabled=false;btn.textContent='Entrar';return;}
+    if(rows[0].password_hash!==hash){showAuthErr('Senha incorreta');btn.disabled=false;btn.textContent='Entrar';return;}
+    currentUser=u;localStorage.setItem('vibenith_user',u);
+    enterApp(false);
+  }catch(e){showAuthErr('Sem conexão. Tente novamente.');btn.disabled=false;btn.textContent='Entrar';}
 }
 
-function shakeLogin(msg){
-  const err=document.getElementById('li-err');err.textContent=msg;err.style.display='block';
-  const card=document.getElementById('login-card');card.style.animation='none';
-  requestAnimationFrame(()=>{card.style.animation='shake .4s';});
-  setLoginLoading(false);
-}
-function setLoginLoading(on){
-  const btn=document.getElementById('li-btn');
-  btn.disabled=on;btn.textContent=on?'Entrando…':'Entrar / Criar conta';
+async function doRegister(){
+  const u=document.getElementById('reg-user').value.trim().toLowerCase();
+  const p=document.getElementById('reg-pass').value;
+  const p2=document.getElementById('reg-pass2').value;
+  if(!u){showAuthErr('Informe um usuário');return;}
+  if(!/^[a-z0-9_]+$/.test(u)){showAuthErr('Use só letras, números e _ no usuário');return;}
+  if(u.length<3){showAuthErr('Usuário muito curto (mínimo 3 caracteres)');return;}
+  if(!p||p.length<4){showAuthErr('Senha deve ter no mínimo 4 caracteres');return;}
+  if(p!==p2){showAuthErr('As senhas não coincidem');return;}
+  const btn=document.getElementById('reg-btn');btn.disabled=true;btn.textContent='Criando…';
+  try{
+    const hash=await hashPassword(p);
+    // Check if username already exists
+    const ck=await fetch(`${SB_URL}/rest/v1/users?username=eq.${encodeURIComponent(u)}&select=username`,{headers:sbHeaders()});
+    const exists=await ck.json();
+    if(exists.length>0){showAuthErr('Usuário já existe. Escolha outro nome.');btn.disabled=false;btn.textContent='Criar conta';return;}
+    // Create user
+    const cr=await fetch(`${SB_URL}/rest/v1/users`,{method:'POST',headers:{...sbHeaders(),'Prefer':'return=minimal'},body:JSON.stringify({username:u,password_hash:hash})});
+    if(!cr.ok)throw new Error(cr.status);
+    currentUser=u;localStorage.setItem('vibenith_user',u);
+    enterApp(true);
+  }catch(e){showAuthErr('Erro ao criar conta. Tente novamente.');btn.disabled=false;btn.textContent='Criar conta';}
 }
 
 function enterApp(isNew){
