@@ -492,7 +492,13 @@ textarea,input{user-select:text}
 .btn-ghost{background:transparent;color:var(--mut);border:1px solid var(--brd)}
 .btn-full{width:100%;justify-content:center;padding:13px}
 
-/* SIDE MENU */
+/* SYNC DOT */
+.sync-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .3s}
+.sync-dot.ok{background:var(--grn);box-shadow:0 0 6px rgba(34,211,160,.5)}
+.sync-dot.saving{background:var(--ylw);animation:spin .8s linear infinite}
+.sync-dot.err{background:var(--red)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(min-width:400px){#sync-lbl{display:block!important}}
 .side-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:199;display:none;backdrop-filter:blur(3px)}
 .side-ov.open{display:block}
 .side-menu{position:fixed;top:0;right:-300px;width:280px;height:100%;background:var(--surf);border-left:1px solid var(--brd);z-index:200;transition:right .3s cubic-bezier(.4,0,.2,1);padding:calc(var(--safe-t) + 70px) 14px calc(30px + var(--safe-b));display:flex;flex-direction:column;gap:4px;overflow-y:auto}
@@ -531,6 +537,11 @@ textarea,input{user-select:text}
     <div class="tb-logo">📋</div>
     <div class="tb-title">Vibenith</div>
     <div style="display:flex;align-items:center;gap:7px">
+      <!-- Sync status indicator -->
+      <div id="sync-status" style="display:flex;align-items:center;gap:5px;padding:5px 9px;background:var(--col);border:1px solid var(--brd);border-radius:8px;cursor:pointer" onclick="pullFromCloud()" title="Toque para sincronizar">
+        <span class="sync-dot ok" id="sync-dot"></span>
+        <span id="sync-lbl" style="font-size:10px;font-family:'Syne',sans-serif;font-weight:700;color:var(--mut);white-space:nowrap;display:none"></span>
+      </div>
       <div class="tb-desktop-row">
         <span style="font-size:12px;color:var(--mut)" id="board-date"></span>
         <div style="width:1px;height:20px;background:var(--brd)"></div>
@@ -683,6 +694,8 @@ textarea,input{user-select:text}
   <div class="side-ov" id="side-ov" onclick="closeMenu()"></div>
   <div class="side-menu" id="side-menu">
     <div class="menu-ttl">Ferramentas</div>
+    <button class="menu-item" onclick="pullFromCloud();closeMenu()"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Sincronizar agora</button>
+    <div class="menu-sep"></div>
     <button class="menu-item" onclick="exportData();closeMenu()"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Salvar backup</button>
     <button class="menu-item" onclick="importData();closeMenu()"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Carregar backup</button>
     <button class="menu-item" onclick="openColModal();closeMenu()"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova coluna</button>
@@ -738,6 +751,64 @@ textarea,input{user-select:text}
 <script>
 const COL_TODO='col1',COL_PROGRESS='col2',COL_DONE='col3';
 
+// ─── SUPABASE CONFIG ───
+const SB_URL='https://ybyrlxijeoitdofbifhb.supabase.co';
+const SB_KEY='sb_publishable_LCrwdnZiUsrUevaMa2pE3A_nyvPQsBL';
+const SB_ROW='vibenith';
+let syncTimer=null,syncing=false,lastSyncedAt=null;
+
+function sbHeaders(){return{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};}
+
+async function pushToCloud(silent){
+  if(syncing)return;syncing=true;setSyncStatus('saving');
+  try{
+    const payload={id:SB_ROW,data:{state,goals},updated_at:new Date().toISOString()};
+    const r=await fetch(`${SB_URL}/rest/v1/sync_data?id=eq.${SB_ROW}`,{method:'PATCH',headers:{...sbHeaders(),'Prefer':'return=minimal'},body:JSON.stringify(payload)});
+    if(!r.ok)throw new Error(r.status);
+    lastSyncedAt=new Date();setSyncStatus('ok');
+    if(!silent)showToast('☁️ Sincronizado!');
+  }catch(e){setSyncStatus('err');if(!silent)showToast('⚠️ Erro ao sincronizar');}
+  finally{syncing=false;}
+}
+
+async function pullFromCloud(){
+  setSyncStatus('saving');
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/sync_data?id=eq.${SB_ROW}&select=data,updated_at`,{headers:sbHeaders()});
+    if(!r.ok)throw new Error(r.status);
+    const rows=await r.json();
+    if(rows.length&&rows[0].data&&Object.keys(rows[0].data).length){
+      const d=rows[0].data;
+      if(d.state)state=d.state;
+      if(d.goals)goals=d.goals;
+      ensureFixedCols();
+      state.columns.forEach(col=>col.cards.forEach(c=>{if(!c.status)c.status='todo';if(!c.elapsed)c.elapsed=0;}));
+      localStorage.setItem('vibenith_v1',JSON.stringify(state));
+      localStorage.setItem('tarefas_goals',JSON.stringify(goals));
+      renderAll();renderGoals();
+      lastSyncedAt=new Date();setSyncStatus('ok');
+      showToast('☁️ Dados carregados da nuvem!');
+    }else{
+      // Cloud empty — push local data up
+      await pushToCloud(true);
+    }
+  }catch(e){setSyncStatus('err');showToast('⚠️ Sem conexão com nuvem');}
+}
+
+function schedulePush(){
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>pushToCloud(true),2000);
+}
+
+function setSyncStatus(s){
+  const el=document.getElementById('sync-dot');if(!el)return;
+  el.className='sync-dot '+s;
+  const lbl=document.getElementById('sync-lbl');if(!lbl)return;
+  if(s==='saving')lbl.textContent='Sincronizando…';
+  else if(s==='ok'){const t=lastSyncedAt?lastSyncedAt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';lbl.textContent='Sincronizado'+( t?' às '+t:'');}
+  else lbl.textContent='Sem conexão';
+}
+
 const DS={columns:[
   {id:'col1',title:'Tarefas',color:'#ffc542',locked:true,cards:[
     {id:'c1',title:'Criar apresentação do projeto',desc:'Slides para reunião na sexta.',tags:[{name:'Urgente',color:'red'}],date:'',status:'todo',elapsed:0},
@@ -768,6 +839,8 @@ function initApp(){
   const bd2=document.getElementById('board-date2');if(bd2)bd2.textContent=d;
   document.getElementById('goals-yr-badge').textContent=new Date().getFullYear();
   renderAll();renderGoals();
+  // Pull latest from cloud
+  pullFromCloud();
 }
 function ensureFixedCols(){
   const ids=state.columns.map(c=>c.id);
@@ -776,8 +849,8 @@ function ensureFixedCols(){
   if(!ids.includes('col3'))state.columns.push({id:'col3',title:'Concluído',color:'#22d3a0',locked:true,cards:[]});
   state.columns.forEach(c=>{if(['col1','col2','col3'].includes(c.id))c.locked=true;});
 }
-function save(){localStorage.setItem('vibenith_v1',JSON.stringify(state));updateStats();}
-function saveGoals(){localStorage.setItem('tarefas_goals',JSON.stringify(goals));}
+function save(){localStorage.setItem('vibenith_v1',JSON.stringify(state));updateStats();schedulePush();}
+function saveGoals(){localStorage.setItem('tarefas_goals',JSON.stringify(goals));schedulePush();}
 
 // ─── NAVIGATION ───
 let curScreen='tarefas';
