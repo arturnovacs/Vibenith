@@ -492,7 +492,9 @@ textarea,input{user-select:text}
 .btn-ghost{background:transparent;color:var(--mut);border:1px solid var(--brd)}
 .btn-full{width:100%;justify-content:center;padding:13px}
 
-/* SYNC DOT */
+/* LOGIN */
+#login-screen{display:flex}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
 .sync-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .3s}
 .sync-dot.ok{background:var(--grn);box-shadow:0 0 6px rgba(34,211,160,.5)}
 .sync-dot.saving{background:var(--ylw);animation:spin .8s linear infinite}
@@ -530,7 +532,32 @@ textarea,input{user-select:text}
 </style>
 </head>
 <body>
-<div id="app">
+<div id="login-screen" style="display:none;min-height:100vh;min-height:100dvh;background:var(--bg);align-items:center;justify-content:center;padding:24px;flex-direction:column;gap:0">
+  <div id="login-card" style="width:100%;max-width:380px;background:var(--surf);border:1px solid var(--brd);border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.5)">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1a1f30,#0f1117);padding:32px 28px 28px;text-align:center">
+      <div style="width:56px;height:56px;background:linear-gradient(135deg,#c8892a,#f0b040);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px;box-shadow:0 8px 24px rgba(200,137,42,.4)">📋</div>
+      <div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--tx);letter-spacing:-.02em">Vibenith</div>
+      <div style="font-size:13px;color:var(--mut);margin-top:6px">Entre ou crie sua conta</div>
+    </div>
+    <!-- Form -->
+    <div style="padding:28px">
+      <div id="li-err" style="display:none;background:rgba(255,82,99,.1);border:1px solid rgba(255,82,99,.3);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:16px;font-family:'Syne',sans-serif;font-weight:700;text-align:center"></div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);display:block;margin-bottom:7px">Usuário</label>
+        <input id="li-user" type="text" placeholder="ex: artur123" maxlength="30" autocomplete="username" style="width:100%;background:var(--col);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:15px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;-webkit-appearance:none;transition:border .15s" onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--brd)'" onkeydown="if(event.key==='Enter')document.getElementById('li-pass').focus()">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);display:block;margin-bottom:7px">Senha</label>
+        <input id="li-pass" type="password" placeholder="Mínimo 4 caracteres" maxlength="50" autocomplete="current-password" style="width:100%;background:var(--col);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:15px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;-webkit-appearance:none;transition:border .15s" onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--brd)'" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button id="li-btn" onclick="doLogin()" style="width:100%;padding:15px;background:var(--acc);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;cursor:pointer;transition:background .15s;letter-spacing:.02em">Entrar / Criar conta</button>
+      <div style="font-size:12px;color:var(--mut);text-align:center;margin-top:16px;line-height:1.6">Se o usuário não existir, <strong style="color:var(--tx)">uma conta nova é criada</strong> automaticamente.<br>Use o mesmo usuário e senha em todos os dispositivos.</div>
+    </div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
 
   <!-- TOPBAR -->
   <div class="topbar">
@@ -553,6 +580,7 @@ textarea,input{user-select:text}
       <button class="tb-action menu-only" onclick="toggleMenu()">
         <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
+      <div id="user-badge" style="display:none;font-size:11px;font-family:'Syne',sans-serif;font-weight:700;color:var(--mut2);background:var(--col);border:1px solid var(--brd);border-radius:8px;padding:5px 10px;white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis"></div>
     </div>
   </div>
 
@@ -701,6 +729,9 @@ textarea,input{user-select:text}
     <button class="menu-item" onclick="openColModal();closeMenu()"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova coluna</button>
     <div class="menu-sep"></div>
     <button class="menu-item" onclick="openResetModal();closeMenu()"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 10 3 3 10 3"/><path d="M21 13a9 9 0 1 0-1.636 5.254"/></svg>Redefinir tarefas</button>
+    <div class="menu-sep"></div>
+    <div id="menu-user" style="padding:8px 14px;font-size:12px;color:var(--mut);font-family:'Syne',sans-serif;font-weight:700"></div>
+    <button class="menu-item danger" onclick="logout()"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sair da conta</button>
   </div>
 
   <!-- BOTTOM SHEET (add card mobile) -->
@@ -754,17 +785,92 @@ const COL_TODO='col1',COL_PROGRESS='col2',COL_DONE='col3';
 // ─── SUPABASE CONFIG ───
 const SB_URL='https://ybyrlxijeoitdofbifhb.supabase.co';
 const SB_KEY='sb_publishable_LCrwdnZiUsrUevaMa2pE3A_nyvPQsBL';
-const SB_ROW='vibenith';
 let syncTimer=null,syncing=false,lastSyncedAt=null;
+let currentUser=null; // logged in username
 
 function sbHeaders(){return{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};}
 
-async function pushToCloud(silent){
-  if(syncing)return;syncing=true;setSyncStatus('saving');
+// Simple hash (not cryptographic, but enough for this use case)
+async function hashPassword(pw){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// ─── AUTH ───
+async function doLogin(){
+  const u=document.getElementById('li-user').value.trim().toLowerCase();
+  const p=document.getElementById('li-pass').value;
+  if(!u||!p){shakeLogin('Preencha usuário e senha');return;}
+  setLoginLoading(true);
   try{
-    const payload={id:SB_ROW,data:{state,goals},updated_at:new Date().toISOString()};
-    const r=await fetch(`${SB_URL}/rest/v1/sync_data?id=eq.${SB_ROW}`,{method:'PATCH',headers:{...sbHeaders(),'Prefer':'return=minimal'},body:JSON.stringify(payload)});
-    if(!r.ok)throw new Error(r.status);
+    const hash=await hashPassword(p);
+    // Check if user exists
+    const r=await fetch(`${SB_URL}/rest/v1/users?username=eq.${encodeURIComponent(u)}&select=username,password_hash`,{headers:sbHeaders()});
+    const rows=await r.json();
+    if(rows.length===0){
+      // New user — create account
+      const cr=await fetch(`${SB_URL}/rest/v1/users`,{method:'POST',headers:{...sbHeaders(),'Prefer':'return=minimal'},body:JSON.stringify({username:u,password_hash:hash})});
+      if(!cr.ok){shakeLogin('Erro ao criar conta. Tente novamente.');setLoginLoading(false);return;}
+      currentUser=u;
+      localStorage.setItem('vibenith_user',u);
+      enterApp(true);
+    } else {
+      // Existing user — check password
+      if(rows[0].password_hash!==hash){shakeLogin('Senha incorreta');setLoginLoading(false);return;}
+      currentUser=u;
+      localStorage.setItem('vibenith_user',u);
+      enterApp(false);
+    }
+  }catch(e){shakeLogin('Sem conexão. Tente novamente.');setLoginLoading(false);}
+}
+
+function shakeLogin(msg){
+  const err=document.getElementById('li-err');err.textContent=msg;err.style.display='block';
+  const card=document.getElementById('login-card');card.style.animation='none';
+  requestAnimationFrame(()=>{card.style.animation='shake .4s';});
+  setLoginLoading(false);
+}
+function setLoginLoading(on){
+  const btn=document.getElementById('li-btn');
+  btn.disabled=on;btn.textContent=on?'Entrando…':'Entrar / Criar conta';
+}
+
+function enterApp(isNew){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  const ub=document.getElementById('user-badge');if(ub){ub.textContent='👤 '+currentUser;ub.style.display='block';}
+  const mu=document.getElementById('menu-user');if(mu)mu.textContent='Logado como '+currentUser;
+  initApp(isNew);
+}
+
+function logout(){
+  // Stop all timers
+  Object.keys(timers).forEach(id=>stopTimerInterval(id));
+  currentUser=null;
+  localStorage.removeItem('vibenith_user');
+  state=JSON.parse(JSON.stringify(DS));goals=[];
+  closeMenu();
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('li-user').value='';
+  document.getElementById('li-pass').value='';
+  document.getElementById('li-err').style.display='none';
+  setLoginLoading(false);
+}
+
+// ─── CLOUD SYNC (per user) ───
+function userRow(){return 'u_'+currentUser;}
+
+async function pushToCloud(silent){
+  if(!currentUser||syncing)return;syncing=true;setSyncStatus('saving');
+  try{
+    const row=userRow();
+    const payload={id:row,data:{state,goals},updated_at:new Date().toISOString()};
+    // Try PATCH first, then POST if not found
+    const pr=await fetch(`${SB_URL}/rest/v1/sync_data?id=eq.${row}`,{method:'PATCH',headers:{...sbHeaders(),'Prefer':'return=minimal'},body:JSON.stringify(payload)});
+    if(pr.status===404||pr.headers.get('content-range')==='*/0'){
+      await fetch(`${SB_URL}/rest/v1/sync_data`,{method:'POST',headers:{...sbHeaders(),'Prefer':'return=minimal'},body:JSON.stringify(payload)});
+    }
     lastSyncedAt=new Date();setSyncStatus('ok');
     if(!silent)showToast('☁️ Sincronizado!');
   }catch(e){setSyncStatus('err');if(!silent)showToast('⚠️ Erro ao sincronizar');}
@@ -772,9 +878,11 @@ async function pushToCloud(silent){
 }
 
 async function pullFromCloud(){
+  if(!currentUser)return;
   setSyncStatus('saving');
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/sync_data?id=eq.${SB_ROW}&select=data,updated_at`,{headers:sbHeaders()});
+    const row=userRow();
+    const r=await fetch(`${SB_URL}/rest/v1/sync_data?id=eq.${row}&select=data,updated_at`,{headers:sbHeaders()});
     if(!r.ok)throw new Error(r.status);
     const rows=await r.json();
     if(rows.length&&rows[0].data&&Object.keys(rows[0].data).length){
@@ -783,29 +891,25 @@ async function pullFromCloud(){
       if(d.goals)goals=d.goals;
       ensureFixedCols();
       state.columns.forEach(col=>col.cards.forEach(c=>{if(!c.status)c.status='todo';if(!c.elapsed)c.elapsed=0;}));
-      localStorage.setItem('vibenith_v1',JSON.stringify(state));
-      localStorage.setItem('tarefas_goals',JSON.stringify(goals));
+      localStorage.setItem('vibenith_v1_'+currentUser,JSON.stringify(state));
+      localStorage.setItem('vibenith_goals_'+currentUser,JSON.stringify(goals));
       renderAll();renderGoals();
       lastSyncedAt=new Date();setSyncStatus('ok');
-      showToast('☁️ Dados carregados da nuvem!');
+      showToast('☁️ Dados atualizados!');
     }else{
-      // Cloud empty — push local data up
       await pushToCloud(true);
     }
   }catch(e){setSyncStatus('err');showToast('⚠️ Sem conexão com nuvem');}
 }
 
-function schedulePush(){
-  clearTimeout(syncTimer);
-  syncTimer=setTimeout(()=>pushToCloud(true),2000);
-}
+function schedulePush(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>pushToCloud(true),2000);}
 
 function setSyncStatus(s){
   const el=document.getElementById('sync-dot');if(!el)return;
   el.className='sync-dot '+s;
   const lbl=document.getElementById('sync-lbl');if(!lbl)return;
   if(s==='saving')lbl.textContent='Sincronizando…';
-  else if(s==='ok'){const t=lastSyncedAt?lastSyncedAt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';lbl.textContent='Sincronizado'+( t?' às '+t:'');}
+  else if(s==='ok'){const t=lastSyncedAt?lastSyncedAt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';lbl.textContent='Sincronizado'+(t?' às '+t:'');}
   else lbl.textContent='Sem conexão';
 }
 
@@ -829,18 +933,35 @@ const timers={};
 const CAT={saude:{label:'💪 Saúde',bg:'rgba(34,211,160,.13)',c:'var(--grn)',b:'rgba(34,211,160,.27)'},carreira:{label:'💼 Carreira',bg:'rgba(79,123,255,.13)',c:'var(--acc)',b:'rgba(79,123,255,.27)'},financas:{label:'💰 Finanças',bg:'rgba(255,197,66,.13)',c:'var(--ylw)',b:'rgba(255,197,66,.27)'},estudos:{label:'📚 Estudos',bg:'rgba(167,139,250,.13)',c:'var(--pur)',b:'rgba(167,139,250,.27)'},pessoal:{label:'🌱 Pessoal',bg:'rgba(34,211,238,.13)',c:'var(--cyn)',b:'rgba(34,211,238,.27)'},viagem:{label:'✈️ Viagem',bg:'rgba(255,82,99,.13)',c:'var(--red)',b:'rgba(255,82,99,.27)'},outro:{label:'⭐ Outro',bg:'rgba(255,255,255,.07)',c:'var(--mut)',b:'var(--brd)'}};
 
 // ─── INIT ───
-function initApp(){
-  const sv=localStorage.getItem('vibenith_v1');if(sv){try{state=JSON.parse(sv);}catch(e){}}
+function initApp(isNew){
+  if(!isNew){
+    const sv=localStorage.getItem('vibenith_v1_'+currentUser);if(sv){try{state=JSON.parse(sv);}catch(e){}}
+    const sg=localStorage.getItem('vibenith_goals_'+currentUser);if(sg){try{goals=JSON.parse(sg);}catch(e){}}
+  } else {
+    state=JSON.parse(JSON.stringify(DS));goals=[];
+  }
   ensureFixedCols();
   state.columns.forEach(col=>col.cards.forEach(c=>{if(!c.status)c.status='todo';if(!c.elapsed)c.elapsed=0;}));
-  const sg=localStorage.getItem('tarefas_goals');if(sg){try{goals=JSON.parse(sg);}catch(e){}}
   const d=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
   const bd=document.getElementById('board-date');if(bd)bd.textContent=d;
   const bd2=document.getElementById('board-date2');if(bd2)bd2.textContent=d;
   document.getElementById('goals-yr-badge').textContent=new Date().getFullYear();
   renderAll();renderGoals();
-  // Pull latest from cloud
   pullFromCloud();
+}
+
+function autoLogin(){
+  const saved=localStorage.getItem('vibenith_user');
+  if(saved){
+    currentUser=saved;
+    const ub=document.getElementById('user-badge');if(ub)ub.textContent='👤 '+currentUser;
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    initApp(false);
+  } else {
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('app').style.display='none';
+  }
 }
 function ensureFixedCols(){
   const ids=state.columns.map(c=>c.id);
@@ -849,8 +970,8 @@ function ensureFixedCols(){
   if(!ids.includes('col3'))state.columns.push({id:'col3',title:'Concluído',color:'#22d3a0',locked:true,cards:[]});
   state.columns.forEach(c=>{if(['col1','col2','col3'].includes(c.id))c.locked=true;});
 }
-function save(){localStorage.setItem('vibenith_v1',JSON.stringify(state));updateStats();schedulePush();}
-function saveGoals(){localStorage.setItem('tarefas_goals',JSON.stringify(goals));schedulePush();}
+function save(){if(currentUser)localStorage.setItem('vibenith_v1_'+currentUser,JSON.stringify(state));updateStats();schedulePush();}
+function saveGoals(){if(currentUser)localStorage.setItem('vibenith_goals_'+currentUser,JSON.stringify(goals));schedulePush();}
 
 // ─── NAVIGATION ───
 let curScreen='tarefas';
@@ -1144,7 +1265,7 @@ document.getElementById('col-name-input').addEventListener('keydown',e=>{if(e.ke
 document.getElementById('goal-title-inp').addEventListener('keydown',e=>{if(e.key==='Enter')addGoal();});
 document.getElementById('sh-title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addCardFromSheet();}});
 
-initApp();
+autoLogin();
 </script>
 </body>
 </html>
