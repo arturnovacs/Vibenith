@@ -866,14 +866,20 @@ async function pushToCloud(silent){
   try{
     const row=userRow();
     const payload={id:row,data:{state,goals},updated_at:new Date().toISOString()};
-    // Try PATCH first, then POST if not found
-    const pr=await fetch(`${SB_URL}/rest/v1/sync_data?id=eq.${row}`,{method:'PATCH',headers:{...sbHeaders(),'Prefer':'return=minimal'},body:JSON.stringify(payload)});
-    if(pr.status===404||pr.headers.get('content-range')==='*/0'){
-      await fetch(`${SB_URL}/rest/v1/sync_data`,{method:'POST',headers:{...sbHeaders(),'Prefer':'return=minimal'},body:JSON.stringify(payload)});
-    }
+    // UPSERT: insere se não existe, atualiza se existe
+    const r=await fetch(`${SB_URL}/rest/v1/sync_data`,{
+      method:'POST',
+      headers:{...sbHeaders(),'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(payload)
+    });
+    if(!r.ok){const txt=await r.text();throw new Error(r.status+' '+txt);}
     lastSyncedAt=new Date();setSyncStatus('ok');
     if(!silent)showToast('☁️ Sincronizado!');
-  }catch(e){setSyncStatus('err');if(!silent)showToast('⚠️ Erro ao sincronizar');}
+  }catch(e){
+    console.error('pushToCloud error:',e);
+    setSyncStatus('err');
+    if(!silent)showToast('⚠️ Erro: '+e.message);
+  }
   finally{syncing=false;}
 }
 
@@ -882,24 +888,44 @@ async function pullFromCloud(){
   setSyncStatus('saving');
   try{
     const row=userRow();
+    console.log('Pulling from cloud for row:',row);
     const r=await fetch(`${SB_URL}/rest/v1/sync_data?id=eq.${row}&select=data,updated_at`,{headers:sbHeaders()});
-    if(!r.ok)throw new Error(r.status);
+    if(!r.ok)throw new Error('HTTP '+r.status);
     const rows=await r.json();
+    console.log('Cloud response:',rows);
     if(rows.length&&rows[0].data&&Object.keys(rows[0].data).length){
       const d=rows[0].data;
       if(d.state)state=d.state;
       if(d.goals)goals=d.goals;
       ensureFixedCols();
       state.columns.forEach(col=>col.cards.forEach(c=>{if(!c.status)c.status='todo';if(!c.elapsed)c.elapsed=0;}));
+      rebalanceColumns();
       localStorage.setItem('vibenith_v1_'+currentUser,JSON.stringify(state));
       localStorage.setItem('vibenith_goals_'+currentUser,JSON.stringify(goals));
       renderAll();renderGoals();
       lastSyncedAt=new Date();setSyncStatus('ok');
       showToast('☁️ Dados atualizados!');
     }else{
-      await pushToCloud(true);
+      console.log('No cloud data found, pushing local data...');
+      await pushToCloud(false);
     }
-  }catch(e){setSyncStatus('err');showToast('⚠️ Sem conexão com nuvem');}
+  }catch(e){
+    console.error('pullFromCloud error:',e);
+    setSyncStatus('err');
+    showToast('⚠️ Erro: '+e.message);
+  }
+}
+
+function rebalanceColumns(){
+  // Collect all cards
+  const allCards=[];
+  state.columns.forEach(col=>{allCards.push(...col.cards);col.cards=[];});
+  // Put each card in the right column based on status
+  allCards.forEach(card=>{
+    const targetId=card.status==='progress'?COL_PROGRESS:card.status==='done'?COL_DONE:COL_TODO;
+    const col=state.columns.find(c=>c.id===targetId)||state.columns[0];
+    col.cards.push(card);
+  });
 }
 
 function schedulePush(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>pushToCloud(true),2000);}
@@ -918,9 +944,7 @@ const DS={columns:[
     {id:'c1',title:'Criar apresentação do projeto',desc:'Slides para reunião na sexta.',tags:[{name:'Urgente',color:'red'}],date:'',status:'todo',elapsed:0},
     {id:'c2',title:'Revisar relatório mensal',desc:'Conferir os números de março.',tags:[{name:'Relatório',color:'blue'}],date:'',status:'todo',elapsed:0}
   ]},
-  {id:'col2',title:'Em Andamento',color:'#4f7bff',locked:true,cards:[
-    {id:'c3',title:'Atualizar site institucional',desc:'Trocar fotos da página Sobre nós.',tags:[{name:'Design',color:'purple'}],date:'',status:'progress',elapsed:0}
-  ]},
+  {id:'col2',title:'Em Andamento',color:'#4f7bff',locked:true,cards:[]},
   {id:'col3',title:'Concluído',color:'#22d3a0',locked:true,cards:[]}
 ],water:{cups:0,goal:8}};
 
@@ -942,6 +966,7 @@ function initApp(isNew){
   }
   ensureFixedCols();
   state.columns.forEach(col=>col.cards.forEach(c=>{if(!c.status)c.status='todo';if(!c.elapsed)c.elapsed=0;}));
+  rebalanceColumns();
   const d=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
   const bd=document.getElementById('board-date');if(bd)bd.textContent=d;
   const bd2=document.getElementById('board-date2');if(bd2)bd2.textContent=d;
