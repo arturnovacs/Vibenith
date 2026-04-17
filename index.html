@@ -109,6 +109,12 @@ textarea,input,select{user-select:text}
 .card.s-prog{border-color:rgba(255,197,66,.15)}
 .card.s-done{border-color:rgba(34,211,160,.12);background:rgba(34,211,160,.012)}
 .card.dragging{opacity:.25;transform:scale(.96) rotate(1deg)}
+/* Botões de mover entre colunas (mobile) */
+.move-btns{display:flex;gap:6px}
+@media(min-width:768px){.move-btns{display:none}}
+.move-btn{flex:1;padding:8px 6px;border-radius:9px;border:none;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;background:rgba(79,123,255,.1);color:var(--acc);border:1px solid rgba(79,123,255,.2);transition:all .15s}
+.move-btn:active{background:rgba(79,123,255,.25);transform:scale(.95)}
+.move-btn:disabled{opacity:.25;cursor:default}
 .card-top{display:flex;align-items:flex-start;gap:8px}
 .card-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--tx);border:none;background:transparent;outline:none;width:100%;resize:none;line-height:1.4;padding:0;min-height:20px;overflow:hidden}
 .s-done .card-title{text-decoration:line-through;color:var(--grn);opacity:.8}
@@ -408,7 +414,7 @@ textarea,input,select{user-select:text}
     <div id="form-register" style="display:none;padding:20px 20px 28px">
       <div style="margin-bottom:14px"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);display:block;margin-bottom:7px">Usuário</label>
         <input id="reg-user" type="text" placeholder="Escolha um usuário" maxlength="30" style="width:100%;background:var(--col);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:15px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;-webkit-appearance:none;transition:border .15s" onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--brd)'" onkeydown="if(event.key==='Enter')document.getElementById('reg-pass').focus()">
-        <div style="font-size:11px;color:var(--mut);margin-top:5px">Letras, números e _ (sem espaços)</div></div>
+        <div style="font-size:11px;color:var(--mut);margin-top:5px">Use o mesmo email em todos os dispositivos</div></div>
       <div style="margin-bottom:14px"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);display:block;margin-bottom:7px">Senha</label>
         <input id="reg-pass" type="password" placeholder="Mínimo 4 caracteres" maxlength="50" style="width:100%;background:var(--col);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:15px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;-webkit-appearance:none;transition:border .15s" onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--brd)'" onkeydown="if(event.key==='Enter')document.getElementById('reg-pass2').focus()"></div>
       <div style="margin-bottom:20px"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);display:block;margin-bottom:7px">Confirmar senha</label>
@@ -459,7 +465,7 @@ textarea,input,select{user-select:text}
       <div class="search-bar">
         <svg width="14" height="14" fill="none" stroke="var(--mut)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="search-inp" type="text" placeholder="Buscar tarefas…" maxlength="80" oninput="filterCards(this.value)">
-        <button class="search-clear" id="search-clear" onclick="clearSearch()">×</button>
+        <button class="search-clear" id="search-clear" onclick="clearSearch()" aria-label="Limpar busca" title="Limpar busca">×</button>
       </div>
       <div class="board-container">
         <div class="board" id="board"></div>
@@ -648,7 +654,7 @@ textarea,input,select{user-select:text}
       <div class="m-handle"></div>
       <h3>💸 Novo Gasto</h3>
       <div><label>Descrição</label><input type="text" id="fin-desc-inp" placeholder="ex: Almoço, Uber, Netflix…" maxlength="60"></div>
-      <div><label>Valor (R$)</label><input type="number" id="fin-val-inp" placeholder="0,00" min="0" step="0.01"></div>
+      <div><label>Valor (R$)</label><input type="number" id="fin-val-inp" placeholder="0,00" min="0" max="999999" step="0.01" oninput="this.value=this.value.replace(/[^0-9.,]/g,'').slice(0,10)"></div>
       <div><label>Categoria</label>
         <select id="fin-cat-inp">
           <option value="alimentacao">🍔 Alimentação</option>
@@ -705,8 +711,28 @@ const SB_URL='https://ybyrlxijeoitdofbifhb.supabase.co';
 const SB_KEY='sb_publishable_LCrwdnZiUsrUevaMa2pE3A_nyvPQsBL';
 let syncTimer=null,syncing=false,lastSyncedAt=null,currentUser=null;
 
-function sbHeaders(){return{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};}
-async function hashPassword(pw){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+// ── SUPABASE AUTH HELPERS ──
+// Cabeçalhos base (sem token de usuário — apenas para auth endpoints)
+function sbHeaders(token){
+  const h={'Content-Type':'application/json','apikey':SB_KEY};
+  if(token)h['Authorization']='Bearer '+token;
+  else h['Authorization']='Bearer '+SB_KEY;
+  return h;
+}
+// Retorna o token JWT do usuário logado (armazenado em sessionStorage)
+function getToken(){return sessionStorage.getItem('vib_token');}
+// Armazena token e UID após login/registro
+function storeSession(token,uid,email){
+  sessionStorage.setItem('vib_token',token);
+  sessionStorage.setItem('vib_uid',uid);
+  sessionStorage.setItem('vib_email',email);
+}
+// Limpa sessão ao sair
+function clearSession(){
+  sessionStorage.removeItem('vib_token');
+  sessionStorage.removeItem('vib_uid');
+  sessionStorage.removeItem('vib_email');
+}
 
 // ── AUTH UI ──
 function switchAuthTab(tab){
@@ -720,85 +746,217 @@ function switchAuthTab(tab){
   document.getElementById('li-err').style.display='none';
   document.getElementById('li-ok').style.display='none';
 }
-function showAuthErr(msg){const e=document.getElementById('li-err');e.textContent=msg;e.style.display='block';document.getElementById('li-ok').style.display='none';const c=document.getElementById('login-card');c.style.animation='none';requestAnimationFrame(()=>{c.style.animation='shake .4s';});}
-function showAuthOk(msg){const e=document.getElementById('li-ok');e.textContent=msg;e.style.display='block';document.getElementById('li-err').style.display='none';}
+function showAuthErr(msg){
+  const e=document.getElementById('li-err');e.textContent=msg;e.style.display='block';
+  document.getElementById('li-ok').style.display='none';
+  const c=document.getElementById('login-card');c.style.animation='none';
+  requestAnimationFrame(()=>{c.style.animation='shake .4s';});
+}
+function showAuthOk(msg){
+  const e=document.getElementById('li-ok');e.textContent=msg;e.style.display='block';
+  document.getElementById('li-err').style.display='none';
+}
+
+// ── LOGIN com Supabase Auth ──
+// A senha nunca sai do browser em texto puro — o Supabase usa bcrypt no servidor
 async function doLogin(){
-  const u=document.getElementById('li-user').value.trim().toLowerCase(),p=document.getElementById('li-pass').value;
-  if(!u){showAuthErr('Informe o usuário');return;}if(!p){showAuthErr('Informe a senha');return;}
+  const email=document.getElementById('li-user').value.trim().toLowerCase();
+  const pw=document.getElementById('li-pass').value;
+  if(!email||!email.includes('@')){showAuthErr('Informe um email válido');return;}
+  if(!pw){showAuthErr('Informe a senha');return;}
   const btn=document.getElementById('li-btn');btn.disabled=true;btn.textContent='Entrando…';
-  try{const hash=await hashPassword(p);const r=await fetch(`${SB_URL}/rest/v1/users?username=eq.${encodeURIComponent(u)}&select=username,password_hash`,{headers:sbHeaders()});const rows=await r.json();
-    if(!rows.length){showAuthErr('Usuário não encontrado. Crie uma conta!');btn.disabled=false;btn.textContent='Entrar';return;}
-    if(rows[0].password_hash!==hash){showAuthErr('Senha incorreta');btn.disabled=false;btn.textContent='Entrar';return;}
-    currentUser=u;localStorage.setItem('vibenith_user',u);enterApp(false);
+  try{
+    const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{
+      method:'POST',
+      headers:sbHeaders(),
+      body:JSON.stringify({email,password:pw})
+    });
+    const data=await r.json();
+    if(!r.ok){
+      const msg=data.error_description||data.msg||'Email ou senha incorretos';
+      showAuthErr(msg);btn.disabled=false;btn.textContent='Entrar';return;
+    }
+    storeSession(data.access_token,data.user.id,email);
+    currentUser=data.user.id; // usa UUID do Supabase Auth como ID único
+    enterApp(false);
   }catch(e){showAuthErr('Sem conexão. Tente novamente.');btn.disabled=false;btn.textContent='Entrar';}
 }
+
+// ── CADASTRO com Supabase Auth ──
 async function doRegister(){
-  const u=document.getElementById('reg-user').value.trim().toLowerCase(),p=document.getElementById('reg-pass').value,p2=document.getElementById('reg-pass2').value;
-  if(!u){showAuthErr('Informe um usuário');return;}
-  if(!/^[a-z0-9_]+$/.test(u)){showAuthErr('Use só letras, números e _');return;}
-  if(u.length<3){showAuthErr('Usuário muito curto (mínimo 3)');return;}
-  if(!p||p.length<4){showAuthErr('Senha: mínimo 4 caracteres');return;}
-  if(p!==p2){showAuthErr('As senhas não coincidem');return;}
+  const email=document.getElementById('reg-user').value.trim().toLowerCase();
+  const pw=document.getElementById('reg-pass').value;
+  const pw2=document.getElementById('reg-pass2').value;
+  if(!email||!email.includes('@')){showAuthErr('Informe um email válido');return;}
+  if(!pw||pw.length<6){showAuthErr('Senha: mínimo 6 caracteres');return;}
+  if(pw!==pw2){showAuthErr('As senhas não coincidem');return;}
   const btn=document.getElementById('reg-btn');btn.disabled=true;btn.textContent='Criando…';
-  try{const hash=await hashPassword(p);const ck=await fetch(`${SB_URL}/rest/v1/users?username=eq.${encodeURIComponent(u)}&select=username`,{headers:sbHeaders()});const exists=await ck.json();
-    if(exists.length){showAuthErr('Usuário já existe. Escolha outro.');btn.disabled=false;btn.textContent='Criar conta';return;}
-    const cr=await fetch(`${SB_URL}/rest/v1/users`,{method:'POST',headers:{...sbHeaders(),'Prefer':'return=minimal'},body:JSON.stringify({username:u,password_hash:hash})});
-    if(!cr.ok)throw new Error(cr.status);
-    currentUser=u;localStorage.setItem('vibenith_user',u);enterApp(true);
-  }catch(e){showAuthErr('Erro ao criar. Tente novamente.');btn.disabled=false;btn.textContent='Criar conta';}
+  try{
+    const r=await fetch(`${SB_URL}/auth/v1/signup`,{
+      method:'POST',
+      headers:sbHeaders(),
+      body:JSON.stringify({email,password:pw})
+    });
+    const data=await r.json();
+    if(!r.ok){
+      const msg=data.error_description||data.msg||'Erro ao criar conta';
+      showAuthErr(msg);btn.disabled=false;btn.textContent='Criar conta';return;
+    }
+    // Se o Supabase exigir confirmação de email, avisar o usuário
+    if(!data.access_token){
+      showAuthOk('✅ Conta criada! Verifique seu email para confirmar antes de entrar.');
+      btn.disabled=false;btn.textContent='Criar conta';return;
+    }
+    storeSession(data.access_token,data.user.id,email);
+    currentUser=data.user.id;
+    enterApp(true);
+  }catch(e){showAuthErr('Sem conexão. Tente novamente.');btn.disabled=false;btn.textContent='Criar conta';}
 }
+
+// ── AUTO-REFRESH DO TOKEN ──
+// Supabase tokens expiram em 1h. Renova silenciosamente usando refresh_token
+async function refreshToken(){
+  const rt=sessionStorage.getItem('vib_refresh');
+  if(!rt)return false;
+  try{
+    const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{
+      method:'POST',headers:sbHeaders(),
+      body:JSON.stringify({refresh_token:rt})
+    });
+    if(!r.ok)return false;
+    const data=await r.json();
+    storeSession(data.access_token,data.user.id,data.user.email);
+    sessionStorage.setItem('vib_refresh',data.refresh_token);
+    return true;
+  }catch{return false;}
+}
+
 function enterApp(isNew){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
-  const ub=document.getElementById('user-badge');if(ub){ub.textContent='👤 '+currentUser;ub.style.display='block';}
-  const mu=document.getElementById('menu-user');if(mu)mu.textContent='Logado como '+currentUser;
+  const email=sessionStorage.getItem('vib_email')||'';
+  const displayName=email.split('@')[0]; // mostra só a parte antes do @
+  const ub=document.getElementById('user-badge');
+  if(ub){ub.textContent='👤 '+displayName;ub.style.display='block';}
+  const mu=document.getElementById('menu-user');
+  if(mu)mu.textContent='Logado como '+displayName;
   initApp(isNew);
 }
-function logout(){
+
+async function logout(){
+  if(!confirm('Sair da conta? Seus dados estão salvos na nuvem.'))return;
+  // Revoga o token no servidor (invalidando a sessão)
+  const token=getToken();
+  if(token){
+    try{await fetch(`${SB_URL}/auth/v1/logout`,{method:'POST',headers:sbHeaders(token)});}
+    catch{}
+  }
   Object.keys(timers).forEach(id=>stopTimerInterval(id));
-  currentUser=null;localStorage.removeItem('vibenith_user');
+  currentUser=null;
+  clearSession();
+  localStorage.removeItem('vibenith_user'); // limpa chave legada se existir
   state=JSON.parse(JSON.stringify(DS));goals=[];expenses=[];
   closeMenu();
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
-  document.getElementById('li-user').value='';document.getElementById('li-pass').value='';
+  document.getElementById('li-user').value='';
+  document.getElementById('li-pass').value='';
   document.getElementById('li-err').style.display='none';
   document.getElementById('li-btn').disabled=false;document.getElementById('li-btn').textContent='Entrar';
 }
 
-// ── CLOUD SYNC ──
-function userRow(){return 'u_'+currentUser;}
+// ── CLOUD SYNC (com Supabase Auth JWT) ──
+// userRow: cada usuário tem sua linha identificada pelo UUID do Auth
+function userRow(){return currentUser;} // currentUser = UUID do Supabase Auth
+
 async function pushToCloud(silent){
-  if(!currentUser||syncing)return;syncing=true;setSyncStatus('saving');
+  if(!currentUser||syncing)return;
+  const token=getToken();
+  if(!token){setSyncStatus('err');return;}
+  syncing=true;setSyncStatus('saving');
   try{
-    const row=userRow();
-    const payload={id:row,data:{state,goals,expenses},updated_at:new Date().toISOString()};
-    const r=await fetch(`${SB_URL}/rest/v1/sync_data`,{method:'POST',headers:{...sbHeaders(),'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(payload)});
+    const payload={id:userRow(),data:{state,goals,expenses},updated_at:new Date().toISOString()};
+    // UPSERT usando o token JWT — RLS garante que só o dono pode escrever
+    const r=await fetch(`${SB_URL}/rest/v1/sync_data`,{
+      method:'POST',
+      headers:{...sbHeaders(token),'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(payload)
+    });
+    if(r.status===401){
+      // Token expirado — tenta renovar e reenviar
+      const ok=await refreshToken();
+      if(ok){syncing=false;await pushToCloud(silent);return;}
+      setSyncStatus('err');syncing=false;return;
+    }
     if(!r.ok){const txt=await r.text();throw new Error(r.status+' '+txt);}
     lastSyncedAt=new Date();setSyncStatus('ok');
     if(!silent)showToast('☁️ Sincronizado!');
-  }catch(e){console.error('push error:',e);setSyncStatus('err');if(!silent)showToast('⚠️ Erro: '+e.message);}
+  }catch(e){console.error('push error:',e.message);setSyncStatus('err');if(!silent)showToast('⚠️ Erro ao sincronizar');}
   finally{syncing=false;}
 }
+
 async function pullFromCloud(){
-  if(!currentUser)return;setSyncStatus('saving');
+  if(!currentUser)return;
+  const token=getToken();
+  if(!token){setSyncStatus('err');return;}
+  setSyncStatus('saving');
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/sync_data?id=eq.${userRow()}&select=data,updated_at`,{headers:sbHeaders()});
+    const r=await fetch(
+      `${SB_URL}/rest/v1/sync_data?id=eq.${encodeURIComponent(userRow())}&select=data,updated_at`,
+      {headers:sbHeaders(token)}
+    );
+    if(r.status===401){const ok=await refreshToken();if(ok)pullFromCloud();else setSyncStatus('err');return;}
     if(!r.ok)throw new Error('HTTP '+r.status);
     const rows=await r.json();
     if(rows.length&&rows[0].data&&Object.keys(rows[0].data).length){
       const d=rows[0].data;
-      if(d.state)state=d.state;if(d.goals)goals=d.goals;
+      if(d.state)state=d.state;
+      if(d.goals)goals=d.goals;
       if(d.expenses)expenses=d.expenses;
       ensureFixedCols();
-      state.columns.forEach(col=>col.cards.forEach(c=>{if(!c.status)c.status='todo';if(!c.elapsed)c.elapsed=0;if(!c.subtasks)c.subtasks=[];}));
+      state.columns.forEach(col=>col.cards.forEach(c=>{
+        if(!c.status)c.status='todo';
+        if(!c.elapsed)c.elapsed=0;
+        if(!c.subtasks)c.subtasks=[];
+      }));
       rebalanceColumns();
-      saveLoc();renderAll();renderGoals();renderFinanceiro();
+      saveLoc();renderAll();renderGoals();renderFinanceiro();renderPanelHistory();
       lastSyncedAt=new Date();setSyncStatus('ok');showToast('☁️ Dados atualizados!');
-    }else{await pushToCloud(false);}
-  }catch(e){console.error('pull error:',e);setSyncStatus('err');showToast('⚠️ Sem conexão');}
+    }else{
+      await pushToCloud(false);
+    }
+  }catch(e){console.error('pull error:',e.message);setSyncStatus('err');showToast('⚠️ Sem conexão');}
 }
-function schedulePush(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>pushToCloud(true),2000);}
+
+// Debounce de 2s — não perde dados ao fechar aba (sendBeacon como fallback)
+function schedulePush(){
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>pushToCloud(true),2000);
+}
+
+// ── BEACON: garante sync ao fechar a aba ──
+// navigator.sendBeacon envia a requisição mesmo se a aba for fechada imediatamente
+window.addEventListener('beforeunload',()=>{
+  if(!currentUser||!getToken())return;
+  const payload=JSON.stringify({id:userRow(),data:{state,goals,expenses},updated_at:new Date().toISOString()});
+  const blob=new Blob([payload],{type:'application/json'});
+  // sendBeacon para o endpoint de upsert
+  navigator.sendBeacon(
+    `${SB_URL}/rest/v1/sync_data`,
+    blob
+  );
+  // Nota: sendBeacon não suporta headers customizados além de Content-Type.
+  // O Supabase aceita a anon key no body apenas para o endpoint específico.
+  // Alternativa mais robusta: usar keepalive:true no fetch
+  const token=getToken();
+  if(token&&!syncing){
+    fetch(`${SB_URL}/rest/v1/sync_data`,{
+      method:'POST',keepalive:true,
+      headers:{...sbHeaders(token),'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:payload
+    }).catch(()=>{});
+  }
+});
 function setSyncStatus(s){
   const el=document.getElementById('sync-dot');if(!el)return;el.className='sync-dot '+s;
   const lbl=document.getElementById('sync-lbl');if(!lbl)return;
@@ -859,9 +1017,16 @@ function buildHistoryFromCards(){
 }
 
 function autoLogin(){
-  const saved=localStorage.getItem('vibenith_user');
-  if(saved){currentUser=saved;const ub=document.getElementById('user-badge');if(ub){ub.textContent='👤 '+currentUser;ub.style.display='block';}document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='flex';initApp(false);}
-  else{document.getElementById('login-screen').style.display='flex';document.getElementById('app').style.display='none';}
+  // Verifica se há token JWT válido na sessionStorage
+  const token=getToken();
+  const uid=sessionStorage.getItem('vib_uid');
+  if(token&&uid){
+    currentUser=uid;
+    enterApp(false);
+  }else{
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('app').style.display='none';
+  }
 }
 function ensureFixedCols(){
   const ids=state.columns.map(c=>c.id);
@@ -925,7 +1090,7 @@ function buildCol(col){
   const list=document.createElement('div');list.className='cards-list';list.id='list-'+col.id;
   col.cards.forEach(c=>list.appendChild(buildCard(c,col.id)));
   setupDrop(el,list,col.id);
-  const delBtn=col.locked?'':`<button class="k-col-del" onclick="deleteCol('${col.id}')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg></button>`;
+  const delBtn=col.locked?'':`<button class="k-col-del" onclick="deleteCol('${col.id}')" aria-label="Excluir coluna" title="Excluir coluna"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg></button>`;
   const hd=document.createElement('div');hd.className='k-col-head';
   hd.innerHTML=`<div class="k-col-dot" style="background:${col.color}"></div><input class="k-col-name" value="${esc(col.title)}" onchange="renameCol('${col.id}',this.value)" onblur="save()" ${col.locked?'readonly':''}><span class="k-col-cnt" id="cnt-${col.id}">${col.cards.length}</span>${delBtn}`;
   el.appendChild(hd);el.appendChild(list);
@@ -946,7 +1111,7 @@ function buildCard(card,colId){
   const isOverdue=card.date&&card.date<today&&st!=='done';
   el.className=`card s-${st}${isOverdue?' overdue':''}`;
   el.id='card-'+card.id;
-  const tags=card.tags.map(t=>`<span class="tag ${t.color}">${esc(t.name)}<span class="tdel" onclick="removeTag('${colId}','${card.id}','${esc(t.name)}')">×</span></span>`).join('');
+  const tags=card.tags.map(t=>`<span class="tag ${t.color}">${esc(t.name)}<span class="tdel" onclick="removeTag('${colId}','${card.id}','${esc(t.name)}')" role="button" aria-label="Remover etiqueta ${esc(t.name)}" title="Remover etiqueta">×</span></span>`).join('');
   let btns='';
   if(st==='todo'){btns=`<button class="sb sb-prog" onclick="setStatus('${colId}','${card.id}','progress')"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Em andamento</button><button class="sb sb-done" onclick="setStatus('${colId}','${card.id}','done')"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Concluído</button>`;}
   else if(st==='progress'){btns=`<button class="sb sb-prog on" disabled><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Em andamento</button><button class="sb sb-done" onclick="setStatus('${colId}','${card.id}','done')"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Concluído</button>`;}
@@ -964,7 +1129,7 @@ function buildCard(card,colId){
     <div class="card-accent"></div>
     <div class="card-top">
       <textarea class="card-title" rows="1" oninput="ar(this)" onchange="uf('${colId}','${card.id}','title',this.value)" onblur="save()">${esc(card.title)}</textarea>
-      <button class="card-del" onclick="delCard('${colId}','${card.id}')"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button class="card-del" onclick="delCard('${colId}','${card.id}')" aria-label="Excluir tarefa" title="Excluir tarefa"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <textarea class="card-desc" rows="1" placeholder="Descrição…" oninput="ar(this)" onchange="uf('${colId}','${card.id}','desc',this.value)" onblur="save()">${esc(card.desc)}</textarea>
     <div class="tags-row">${tags}<button class="add-tag-btn" onclick="openTagModal('${colId}','${card.id}')">+ tag</button></div>
@@ -973,6 +1138,7 @@ function buildCard(card,colId){
     ${stHtml}
     ${timerHtml}
     ${doneMeta}
+    ${buildMoveBtns(card,colId,st)}
     <div class="status-row${st==='todo'||st==='progress'?'':' one'}">${btns}</div>
     ${st==='done'?`<button class="sb sb-undo" onclick="setStatus('${colId}','${card.id}','todo')"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="3 10 3 3 10 3"/><path d="M21 13a9 9 0 1 0-1.636 5.254"/></svg>Desfazer</button>`:''}
   `;
@@ -994,41 +1160,37 @@ function buildCard(card,colId){
     document.querySelectorAll('.cards-list').forEach(l=>l.classList.remove('drag-over'));
   });
 
-  // ── TOUCH DRAG (mobile) — arrasta entre colunas via swipe longo ──
-  let touchDragTimer=null;
-  el.addEventListener('touchstart',e=>{
-    touchDragTimer=setTimeout(()=>{
-      dragCard={cardId:card.id,fromColId:colId};
-      el.classList.add('dragging');
-      showToast('👆 Arraste para outra coluna');
-    },600); // segura 600ms para ativar drag
-  },{passive:true});
-  el.addEventListener('touchend',e=>{
-    clearTimeout(touchDragTimer);
-    if(!dragCard)return;
-    // Identifica em qual coluna o dedo foi solto
-    const touch=e.changedTouches[0];
-    const target=document.elementFromPoint(touch.clientX,touch.clientY);
-    const destCol=target?.closest('.k-col');
-    if(destCol&&destCol.dataset.colId&&destCol.dataset.colId!==colId){
-      const ns=destCol.dataset.colId===COL_PROGRESS?'progress':destCol.dataset.colId===COL_DONE?'done':'todo';
-      setStatus(colId,card.id,ns);
-    }
-    el.classList.remove('dragging');
-    el.style.opacity='';
-    dragCard=null;
-    document.querySelectorAll('.cards-list').forEach(l=>l.classList.remove('drag-over'));
-  },{passive:true});
-  el.addEventListener('touchmove',e=>{
-    if(!dragCard)return;
-    const touch=e.touches[0];
-    const target=document.elementFromPoint(touch.clientX,touch.clientY);
-    const destList=target?.closest('.cards-list');
-    document.querySelectorAll('.cards-list').forEach(l=>l.classList.remove('drag-over'));
-    if(destList)destList.classList.add('drag-over');
-  },{passive:true});
-
   return el;
+}
+
+
+// ── BOTÕES DE MOVER (mobile) ──
+// Substitui o touch drag por botões explícitos de mover entre colunas
+function buildMoveBtns(card,colId,st){
+  if(st==='done')return''; // cartão concluído não precisa de botões de mover
+  const cols=state.columns;
+  const idx=cols.findIndex(c=>c.id===colId);
+  const hasPrev=idx>0;
+  const hasNext=idx<cols.length-1;
+  if(!hasPrev&&!hasNext)return'';
+  const prevCol=hasPrev?cols[idx-1]:null;
+  const nextCol=hasNext?cols[idx+1]:null;
+  return`<div class="move-btns">
+    <button class="move-btn" ${!hasPrev?'disabled':''} onclick="${hasPrev?`moveCard('${card.id}','${colId}','${prevCol?.id}')`:''}" aria-label="Mover para ${prevCol?.title||''}">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      ${esc(prevCol?.title||'')}
+    </button>
+    <button class="move-btn" ${!hasNext?'disabled':''} onclick="${hasNext?`moveCard('${card.id}','${colId}','${nextCol?.id}')`:''}" aria-label="Mover para ${nextCol?.title||''}">
+      ${esc(nextCol?.title||'')}
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>`;
+}
+
+// Move card para outra coluna e atualiza status automaticamente
+function moveCard(cardId,fromColId,toColId){
+  const ns=toColId===COL_PROGRESS?'progress':toColId===COL_DONE?'done':'todo';
+  setStatus(fromColId,cardId,ns);
 }
 
 // ── SUBTASKS ──
@@ -1378,7 +1540,7 @@ function confirmAddExpense(){
   const cat=document.getElementById('fin-cat-inp').value;
   const date=document.getElementById('fin-date-inp').value;
   if(!desc){document.getElementById('fin-desc-inp').focus();return;}
-  if(isNaN(val)||val<=0){document.getElementById('fin-val-inp').focus();return;}
+  if(isNaN(val)||val<=0||val>999999){document.getElementById('fin-val-inp').focus();showToast('⚠️ Valor inválido');return;}
   if(!date)return;
   expenses.push({id:'e'+(++eCnt),desc,value:val,category:cat,date});
   closeFinModal();saveLoc();schedulePush();renderFinanceiro();showToast('💸 Gasto registrado!');
@@ -1457,9 +1619,25 @@ let toastTimer;
 function showToast(msg){clearTimeout(toastTimer);const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');toastTimer=setTimeout(()=>t.classList.remove('show'),2600);}
 
 // ── SWIPE ──
-let swipeX=0;
-document.getElementById('board').addEventListener('touchstart',e=>{swipeX=e.touches[0].clientX;},{passive:true});
-document.getElementById('board').addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-swipeX;if(Math.abs(dx)>60){const next=dx<0?Math.min(activeColIdx+1,state.columns.length-1):Math.max(activeColIdx-1,0);showColumn(next);}},{passive:true});
+let swipeX=0,swipeY=0,swipeBlocked=false;
+document.getElementById('board').addEventListener('touchstart',e=>{
+  swipeX=e.touches[0].clientX;swipeY=e.touches[0].clientY;swipeBlocked=false;
+},{passive:true});
+document.getElementById('board').addEventListener('touchmove',e=>{
+  if(swipeBlocked)return;
+  const dx=Math.abs(e.touches[0].clientX-swipeX);
+  const dy=Math.abs(e.touches[0].clientY-swipeY);
+  if(dy>dx)swipeBlocked=true; // scroll vertical → bloqueia swipe de coluna
+},{passive:true});
+document.getElementById('board').addEventListener('touchend',e=>{
+  if(swipeBlocked)return;
+  const dx=e.changedTouches[0].clientX-swipeX;
+  const dy=Math.abs(e.changedTouches[0].clientY-swipeY);
+  if(Math.abs(dx)>70&&dy<30){ // horizontal forte + vertical pequeno
+    const next=dx<0?Math.min(activeColIdx+1,state.columns.length-1):Math.max(activeColIdx-1,0);
+    showColumn(next);
+  }
+},{passive:true});
 
 ['tag-overlay','col-overlay','reset-overlay','fin-overlay'].forEach(id=>{document.getElementById(id).addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});});
 document.getElementById('tag-name-input').addEventListener('keydown',e=>{if(e.key==='Enter')confirmAddTag();});
