@@ -10,6 +10,7 @@
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="no-referrer">
+<link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Vibenith%22,%22short_name%22:%22Vibenith%22,%22description%22:%22Organize sua vida%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%230f1117%22,%22theme_color%22:%22%234f7bff%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect fill=%27%234f7bff%27 width=%27192%27 height=%27192%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 font-family=%27Syne%27 font-size=%27140%27 font-weight=%27bold%27 text-anchor=%27middle%27 dominant-baseline=%27central%27 fill=%27white%27%3E%F0%9F%93%8B%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22,%22purpose%22:%22any%22}]}">
 <title>Vibenith</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -454,7 +455,6 @@ textarea,input,select{user-select:text}
     <button class="top-tab-btn" onclick="gotoScreen('painel',this)">📊 Painel</button>
     <button class="top-tab-btn" onclick="gotoScreen('financeiro',this)">💸 Financeiro</button>
     <button class="top-tab-btn" onclick="gotoScreen('agua',this)">💧 Água</button>
-    <button class="top-tab-btn" onclick="gotoScreen('metas',this)">🎯 Metas</button>
   </div>
 
   <div class="app-body">
@@ -472,40 +472,18 @@ textarea,input,select{user-select:text}
       </div>
     </div>
 
-    <!-- PAINEL -->
+    <!-- PAINEL POR DIA -->
     <div class="screen" id="scr-painel">
       <div class="screen-hdr">
-        <div><div class="screen-hdr-title">Painel</div><div class="screen-hdr-sub" id="board-date2"></div></div>
+        <div><div class="screen-hdr-title">Painel</div><div class="screen-hdr-sub">Histórico diário</div></div>
       </div>
       <div class="scr-scroll" style="padding:0 16px 24px">
-        <div class="panel-widget">
-          <div class="pw-title">📊 Hoje</div>
-          <div class="stats-grid">
-            <div class="stat-box"><div class="stat-lbl">Total</div><div class="stat-val sv-blue" id="s-total">0</div></div>
-            <div class="stat-box"><div class="stat-lbl">A Fazer</div><div class="stat-val sv-yellow" id="s-pend">0</div></div>
-            <div class="stat-box"><div class="stat-lbl">Andamento</div><div class="stat-val sv-purple" id="s-prog">0</div></div>
-            <div class="stat-box"><div class="stat-lbl">Concluídas hoje</div><div class="stat-val sv-green" id="s-done-today">0</div></div>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--mut);margin-top:16px;margin-bottom:7px">
-            <span>Progresso geral</span>
-            <span style="font-family:'Syne',sans-serif;font-weight:700;color:var(--acc)" id="s-pct">0%</span>
-          </div>
-          <div class="prog-wrap"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+          <button class="fpb" onclick="panelPrevDay()" style="padding:8px 12px;flex:0">←</button>
+          <input type="date" id="panel-date-inp" onchange="panelDateChanged()" style="flex:1;background:var(--col);border:1px solid var(--brd);border-radius:10px;padding:10px;font-size:14px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;color-scheme:dark">
+          <button class="fpb" onclick="panelNextDay()" style="padding:8px 12px;flex:0">→</button>
         </div>
-        <div class="panel-widget">
-          <div class="pw-title">🥧 Distribuição por coluna</div>
-          <div class="pie-row">
-            <svg id="pie-svg" width="110" height="110" viewBox="0 0 100 100" style="flex-shrink:0"></svg>
-            <div class="pie-legend" id="pie-legend"></div>
-          </div>
-        </div>
-        <div class="panel-widget">
-          <div class="pw-title" style="justify-content:space-between">
-            ✅ Concluídas nos últimos 30 dias
-            <span id="hist-count" style="font-size:12px;color:var(--grn);font-family:'Syne',sans-serif;font-weight:700"></span>
-          </div>
-          <div id="hist-list"><div class="empty-st" style="padding:20px"><div class="empty-ico" style="font-size:28px">📭</div><div class="empty-tx" style="font-size:12px">Nenhuma tarefa concluída ainda</div></div></div>
-        </div>
+        <div id="panel-content"></div>
       </div>
     </div>
 
@@ -554,39 +532,30 @@ textarea,input,select{user-select:text}
       </div>
       <div class="scr-scroll" style="padding:0 16px 100px">
         <div class="panel-widget" style="text-align:center;margin-bottom:12px">
-          <div class="water-big"><span id="w-cups">0</span><span class="water-of"> / <span id="w-goal">8</span></span></div>
-          <div class="water-ml" id="w-ml">0 ml de 2000 ml</div>
+          <div class="water-big"><span id="w-ml">0</span><span class="water-of"> ml</span></div>
+          <div class="water-ml" id="w-goal-display">Meta: 2000 ml</div>
           <div class="w-bar-wrap" style="margin:16px 0 20px"><div class="w-bar-fill" id="water-bar" style="width:0%"></div></div>
-          <div class="water-cups" id="water-cups"></div>
+        </div>
+        <div class="panel-widget">
+          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--tx);margin-bottom:12px">Adicionar água</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input type="number" id="w-custom" placeholder="ml" min="1" max="5000" style="flex:1;background:var(--col);border:1px solid var(--brd);border-radius:10px;padding:10px;font-size:14px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none">
+            <button class="wa-btn wa-add" onclick="addWaterCustom()" style="flex:1">Adicionar</button>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="wa-btn wa-add" onclick="addWaterQuick(250)" style="flex:1;min-width:70px;padding:8px;font-size:12px">250ml</button>
+            <button class="wa-btn wa-add" onclick="addWaterQuick(500)" style="flex:1;min-width:70px;padding:8px;font-size:12px">500ml</button>
+            <button class="wa-btn wa-add" onclick="addWaterQuick(1000)" style="flex:1;min-width:70px;padding:8px;font-size:12px">1L</button>
+          </div>
         </div>
         <div class="water-acts">
-          <button class="wa-btn wa-add" onclick="addWater()">+ Copo</button>
           <button class="wa-btn wa-reset" onclick="resetWater()">Zerar dia</button>
+          <button class="wa-btn wa-reset" onclick="editWaterGoal()">⚙️ Meta</button>
         </div>
       </div>
     </div>
 
-    <!-- METAS -->
-    <div class="screen" id="scr-metas">
-      <div class="screen-hdr">
-        <div><div class="screen-hdr-title">Metas</div><div class="screen-hdr-sub">Clique em ✕ para excluir</div></div>
-        <span class="yr-badge" id="goals-yr-badge"></span>
-      </div>
-      <div class="scr-scroll" style="padding:0 16px 100px">
-        <div id="goals-list"></div>
-        <div class="add-goal-box">
-          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--tx)">➕ Nova Meta</div>
-          <input class="ag-inp" type="text" id="goal-title-inp" placeholder="ex: Ler 12 livros, Academia 3x…" maxlength="80">
-          <select class="ag-inp ag-sel" id="goal-cat-inp">
-            <option value="saude">💪 Saúde</option><option value="carreira">💼 Carreira</option>
-            <option value="financas">💰 Finanças</option><option value="estudos">📚 Estudos</option>
-            <option value="pessoal">🌱 Pessoal</option><option value="viagem">✈️ Viagem</option>
-            <option value="outro">⭐ Outro</option>
-          </select>
-          <button class="ag-save" onclick="addGoal()">Adicionar Meta</button>
-        </div>
-      </div>
-    </div>
+
 
   </div><!-- /app-body -->
 
@@ -606,10 +575,6 @@ textarea,input,select{user-select:text}
     <button class="nav-item" id="ni-agua" onclick="gotoScreen('agua',this)">
       <div class="nav-ico-wrap"><div class="nav-icon">💧</div></div>
       <span class="nav-lbl">Água</span>
-    </button>
-    <button class="nav-item" id="ni-metas" onclick="gotoScreen('metas',this)">
-      <div class="nav-ico-wrap"><div class="nav-icon">🎯</div></div>
-      <span class="nav-lbl">Metas</span>
     </button>
   </nav>
 
@@ -654,7 +619,7 @@ textarea,input,select{user-select:text}
       <div class="m-handle"></div>
       <h3>💸 Novo Gasto</h3>
       <div><label>Descrição</label><input type="text" id="fin-desc-inp" placeholder="ex: Almoço, Uber, Netflix…" maxlength="60"></div>
-      <div><label>Valor (R$)</label><input type="number" id="fin-val-inp" placeholder="0,00" min="0" max="999999" step="0.01" oninput="this.value=this.value.replace(/[^0-9.,]/g,'').slice(0,10)"></div>
+      <div><label>Valor (R$)</label><input type="number" id="fin-val-inp" placeholder="0.00" min="0" max="999999" step="0.01" style="background:var(--col);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:15px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;width:100%;transition:border .15s;-webkit-appearance:none"></div>
       <div><label>Categoria</label>
         <select id="fin-cat-inp">
           <option value="alimentacao">🍔 Alimentação</option>
@@ -712,26 +677,34 @@ const SB_KEY='sb_publishable_LCrwdnZiUsrUevaMa2pE3A_nyvPQsBL';
 let syncTimer=null,syncing=false,lastSyncedAt=null,currentUser=null;
 
 // ── SUPABASE AUTH HELPERS ──
-// Cabeçalhos base (sem token de usuário — apenas para auth endpoints)
 function sbHeaders(token){
   const h={'Content-Type':'application/json','apikey':SB_KEY};
-  if(token)h['Authorization']='Bearer '+token;
-  else h['Authorization']='Bearer '+SB_KEY;
+  h['Authorization']='Bearer '+(token||SB_KEY);
   return h;
 }
-// Retorna o token JWT do usuário logado (armazenado em sessionStorage)
+
+// access_token → sessionStorage (dura enquanto o browser está aberto)
+// refresh_token, uid, email → localStorage (persiste entre sessões)
 function getToken(){return sessionStorage.getItem('vib_token');}
-// Armazena token e UID após login/registro
-function storeSession(token,uid,email){
-  sessionStorage.setItem('vib_token',token);
+
+function storeSession(access,refresh,uid,email){
+  sessionStorage.setItem('vib_token',access);
+  // refresh_token no localStorage garante que o usuário não precisa logar de novo
+  if(refresh)localStorage.setItem('vib_refresh',refresh);
+  localStorage.setItem('vib_uid',uid);
+  localStorage.setItem('vib_email',email);
+  // copia uid para sessionStorage para leitura rápida
   sessionStorage.setItem('vib_uid',uid);
   sessionStorage.setItem('vib_email',email);
 }
-// Limpa sessão ao sair
+
 function clearSession(){
   sessionStorage.removeItem('vib_token');
   sessionStorage.removeItem('vib_uid');
   sessionStorage.removeItem('vib_email');
+  localStorage.removeItem('vib_refresh');
+  localStorage.removeItem('vib_uid');
+  localStorage.removeItem('vib_email');
 }
 
 // ── AUTH UI ──
@@ -807,7 +780,7 @@ async function doRegister(){
       showAuthOk('✅ Conta criada! Verifique seu email para confirmar antes de entrar.');
       btn.disabled=false;btn.textContent='Criar conta';return;
     }
-    storeSession(data.access_token,data.user.id,email);
+    storeSession(data.access_token,data.refresh_token||null,data.user.id,email);
     currentUser=data.user.id;
     enterApp(true);
   }catch(e){showAuthErr('Sem conexão. Tente novamente.');btn.disabled=false;btn.textContent='Criar conta';}
@@ -816,17 +789,22 @@ async function doRegister(){
 // ── AUTO-REFRESH DO TOKEN ──
 // Supabase tokens expiram em 1h. Renova silenciosamente usando refresh_token
 async function refreshToken(){
-  const rt=sessionStorage.getItem('vib_refresh');
+  // Lê o refresh_token do localStorage (persiste entre sessões)
+  const rt=localStorage.getItem('vib_refresh');
   if(!rt)return false;
   try{
     const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{
       method:'POST',headers:sbHeaders(),
       body:JSON.stringify({refresh_token:rt})
     });
-    if(!r.ok)return false;
+    if(!r.ok){
+      // refresh inválido ou revogado → limpa tudo
+      clearSession();
+      return false;
+    }
     const data=await r.json();
-    storeSession(data.access_token,data.user.id,data.user.email);
-    sessionStorage.setItem('vib_refresh',data.refresh_token);
+    // Salva o novo par de tokens (Supabase rotaciona o refresh_token a cada uso)
+    storeSession(data.access_token,data.refresh_token,data.user.id,data.user.email);
     return true;
   }catch{return false;}
 }
@@ -834,8 +812,9 @@ async function refreshToken(){
 function enterApp(isNew){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
-  const email=sessionStorage.getItem('vib_email')||'';
-  const displayName=email.split('@')[0]; // mostra só a parte antes do @
+  // Lê email da sessionStorage ou, como fallback, do localStorage
+  const email=sessionStorage.getItem('vib_email')||localStorage.getItem('vib_email')||'';
+  const displayName=email.split('@')[0];
   const ub=document.getElementById('user-badge');
   if(ub){ub.textContent='👤 '+displayName;ub.style.display='block';}
   const mu=document.getElementById('menu-user');
@@ -920,7 +899,7 @@ async function pullFromCloud(){
         if(!c.subtasks)c.subtasks=[];
       }));
       rebalanceColumns();
-      saveLoc();renderAll();renderGoals();renderFinanceiro();renderPanelHistory();
+      saveLoc();renderAll();renderFinanceiro();initPanelDate();
       lastSyncedAt=new Date();setSyncStatus('ok');showToast('☁️ Dados atualizados!');
     }else{
       await pushToCloud(false);
@@ -973,7 +952,7 @@ const DS={columns:[
   ]},
   {id:'col2',title:'Em Andamento',color:'#4f7bff',locked:true,cards:[]},
   {id:'col3',title:'Concluído',color:'#22d3a0',locked:true,cards:[]}
-],water:{cups:0,goal:8}};
+],water:{ml:0,goal:2000,lastDate:''}};
 
 let state=JSON.parse(JSON.stringify(DS));
 let goals=[],expenses=[],completedHistory=[];
@@ -1001,12 +980,12 @@ function initApp(isNew){
   const d=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
   const bd=document.getElementById('board-date');if(bd)bd.textContent=d;
   const bd2=document.getElementById('board-date2');if(bd2)bd2.textContent=d;
-  document.getElementById('goals-yr-badge').textContent=new Date().getFullYear();
+  
   // Set default date for finance
   document.getElementById('fin-date-inp').value=new Date().toISOString().split('T')[0];
   // Reset automático da água ao abrir em novo dia
   checkWaterDailyReset();
-  renderAll();renderGoals();renderFinanceiro();renderPanelHistory();
+  renderAll();renderFinanceiro();initPanelDate();
   pullFromCloud();
 }
 
@@ -1016,17 +995,52 @@ function buildHistoryFromCards(){
   if(doneCol)doneCol.cards.forEach(c=>{if(!c.doneAt)c.doneAt=new Date().toISOString().split('T')[0];});
 }
 
-function autoLogin(){
-  // Verifica se há token JWT válido na sessionStorage
+async function autoLogin(){
+  // 1. Token em memória (mesma sessão do browser) — entra direto
   const token=getToken();
   const uid=sessionStorage.getItem('vib_uid');
   if(token&&uid){
     currentUser=uid;
     enterApp(false);
-  }else{
-    document.getElementById('login-screen').style.display='flex';
-    document.getElementById('app').style.display='none';
+    return;
   }
+
+  // 2. Sem token em memória, mas há refresh_token salvo → renova silenciosamente
+  const rt=localStorage.getItem('vib_refresh');
+  if(rt){
+    // Mostra tela de carregamento enquanto renova
+    showSplash('Carregando…');
+    const ok=await refreshToken();
+    hideSplash();
+    if(ok){
+      currentUser=sessionStorage.getItem('vib_uid');
+      enterApp(false);
+      return;
+    }
+    // Refresh falhou (token revogado ou expirado) → pede login
+  }
+
+  // 3. Sem sessão → mostra tela de login
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+
+// Tela de splash enquanto renova o token em segundo plano
+function showSplash(msg){
+  let el=document.getElementById('splash');
+  if(!el){
+    el=document.createElement('div');
+    el.id='splash';
+    el.style.cssText='position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;z-index:9999';
+    el.innerHTML=`<div style="width:48px;height:48px;background:linear-gradient(135deg,#c8892a,#f0b040);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 8px 24px rgba(200,137,42,.4)">📋</div><div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--tx)">Vibenith</div><div id="splash-msg" style="font-size:13px;color:var(--mut)"></div>`;
+    document.body.appendChild(el);
+  }
+  const m=document.getElementById('splash-msg');
+  if(m)m.textContent=msg;
+}
+function hideSplash(){
+  const el=document.getElementById('splash');
+  if(el){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);}
 }
 function ensureFixedCols(){
   const ids=state.columns.map(c=>c.id);
@@ -1052,7 +1066,7 @@ function gotoScreen(id,btn){
   document.querySelectorAll('.top-tab-btn').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
   const fab=document.getElementById('fab');if(fab)fab.style.display=id==='tarefas'?'flex':'none';
-  if(id==='painel')renderPanelHistory();
+  if(id==='painel')renderDailyPanel();
   if(id==='financeiro'){renderFinanceiro();requestAnimationFrame(()=>renderFinanceiro());}
 }
 function toggleMenu(){document.getElementById('side-menu').classList.toggle('open');document.getElementById('side-ov').classList.toggle('open');}
@@ -1536,13 +1550,19 @@ function openFinModal(){
 function closeFinModal(){document.getElementById('fin-overlay').classList.remove('open');}
 function confirmAddExpense(){
   const desc=document.getElementById('fin-desc-inp').value.trim();
-  const val=parseFloat(document.getElementById('fin-val-inp').value);
+  const valStr=document.getElementById('fin-val-inp').value.trim();
+  const val=parseFloat(valStr);
   const cat=document.getElementById('fin-cat-inp').value;
   const date=document.getElementById('fin-date-inp').value;
   if(!desc){document.getElementById('fin-desc-inp').focus();return;}
-  if(isNaN(val)||val<=0||val>999999){document.getElementById('fin-val-inp').focus();showToast('⚠️ Valor inválido');return;}
+  if(!valStr||isNaN(val)||val<=0||val>999999){
+    document.getElementById('fin-val-inp').focus();
+    showToast('⚠️ Valor inválido');
+    return;
+  }
   if(!date)return;
-  expenses.push({id:'e'+(++eCnt),desc,value:val,category:cat,date});
+  const roundVal=Math.round(val*100)/100;
+  expenses.push({id:'e'+(++eCnt),desc,value:roundVal,category:cat,date});
   closeFinModal();saveLoc();schedulePush();renderFinanceiro();showToast('💸 Gasto registrado!');
 }
 function delExpense(id){expenses=expenses.filter(e=>e.id!==id);saveLoc();schedulePush();renderFinanceiro();showToast('🗑 Gasto removido');}
@@ -1562,25 +1582,47 @@ function resetWater(){state.water={...state.water,cups:0};renderWater();save();s
 function editWaterGoal(){const v=prompt('Meta de copos (1–20):',state.water?.goal||8);if(!v)return;const n=parseInt(v);if(isNaN(n)||n<1||n>20){alert('Informe entre 1 e 20.');return;}state.water={...state.water,goal:n,cups:Math.min(state.water.cups,n)};renderWater();save();showToast('🎯 Meta atualizada!');}
 
 // ── GOALS ──
-function renderGoals(){
-  const list=document.getElementById('goals-list');if(!list)return;list.innerHTML='';
-  if(!goals.length){list.innerHTML=`<div class="empty-st"><div class="empty-ico">🎯</div><div class="empty-tx">Nenhuma meta ainda.<br>Adicione abaixo!</div></div>`;return;}
-  goals.forEach(g=>list.appendChild(buildGoalCard(g)));
+
+// ── ÁGUA ──
+function renderWater(){
+  if(!state.water)state.water={ml:0,goal:2000,lastDate:''};
+  const{ml,goal}=state.water;
+  const el_ml=document.getElementById('w-ml'),el_goal=document.getElementById('w-goal-display'),el_bar=document.getElementById('water-bar');
+  if(el_ml)el_ml.textContent=ml;
+  if(el_goal)el_goal.textContent='Meta: '+goal+' ml';
+  const pct=Math.min(ml/goal*100,100);
+  if(el_bar)el_bar.style.width=pct+'%';
 }
-function buildGoalCard(g){
-  const cat=CAT[g.category]||CAT.outro;const pct=Math.min(Math.max(parseInt(g.progress)||0,0),100);
-  const pc=pct===100?'var(--grn)':pct>=50?'var(--acc)':'var(--ylw)';
-  const el=document.createElement('div');el.className='goal-card'+(g.done?' done-g':'');el.id='goal-'+g.id;
-  el.innerHTML=`<div class="gc-top"><textarea class="gc-title" rows="1" oninput="ar(this)" onchange="updGoal('${g.id}','title',this.value)" onblur="saveGoals()">${esc(g.title)}</textarea><button class="gc-del" onclick="delGoal('${g.id}')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-  <div class="gc-meta"><span class="gc-cat" style="background:${cat.bg};color:${cat.c};border:1px solid ${cat.b}">${cat.label}</span><input type="date" class="gc-date" value="${g.deadline||''}" onchange="updGoal('${g.id}','deadline',this.value);saveGoals()"></div>
-  <div class="gc-prog-row"><div class="gc-prog-bar"><div class="gc-prog-fill" style="width:${pct}%;background:${pc}"></div></div><input class="gc-prog-inp" type="number" min="0" max="100" value="${pct}" onchange="updGoal('${g.id}','progress',this.value)" onblur="saveGoals()"><span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;min-width:36px;text-align:right;color:${pc}">${pct}%</span></div>
-  <button class="gc-check ${g.done?'gc-yes':'gc-no'}" onclick="toggleGoal('${g.id}')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>${g.done?'Concluída ✓':'Marcar como concluída'}</button>`;
-  return el;
+function addWaterCustom(){
+  const inp=document.getElementById('w-custom');
+  const ml=parseInt(inp.value)||0;
+  if(ml<1||ml>5000){showToast('⚠️ Informe entre 1 e 5000 ml');return;}
+  if(!state.water)state.water={ml:0,goal:2000,lastDate:''};
+  state.water.ml+=ml;
+  inp.value='';
+  renderWater();save();showToast('💧 +'+ml+' ml!');
+  if(state.water.ml>=state.water.goal)showToast('🎉 Meta atingida!');
 }
-function addGoal(){const tEl=document.getElementById('goal-title-inp');const title=tEl.value.trim();if(!title){tEl.focus();tEl.style.borderColor='var(--red)';setTimeout(()=>tEl.style.borderColor='',1200);return;}goals.push({id:'g'+(++gCnt),title,category:document.getElementById('goal-cat-inp').value,progress:0,deadline:'',done:false});tEl.value='';saveGoals();renderGoals();showToast('🎯 Meta adicionada!');}
-function updGoal(id,f,v){const g=goals.find(g=>g.id===id);if(!g)return;if(f==='progress')v=Math.min(Math.max(parseInt(v)||0,0),100);g[f]=v;if(f==='progress'||f==='title'){const ex=document.getElementById('goal-'+id);if(ex)ex.replaceWith(buildGoalCard(g));}}
-function toggleGoal(id){const g=goals.find(g=>g.id===id);if(!g)return;g.done=!g.done;if(g.done)g.progress=100;saveGoals();renderGoals();showToast(g.done?'🎯 Concluída!':'↩️ Reaberta!');}
-function delGoal(id){const g=goals.find(g=>g.id===id);if(!confirm(`Excluir "${g?.title||'meta'}"?`))return;const row=document.getElementById('goal-'+id);if(row){row.style.cssText='opacity:0;transform:translateX(16px);transition:.22s';setTimeout(()=>{goals=goals.filter(g=>g.id!==id);saveGoals();renderGoals();},230);}else{goals=goals.filter(g=>g.id!==id);saveGoals();renderGoals();}showToast('🗑 Meta excluída');}
+function addWaterQuick(ml){
+  if(!state.water)state.water={ml:0,goal:2000,lastDate:''};
+  state.water.ml+=ml;
+  renderWater();save();showToast('💧 +'+ml+' ml!');
+  if(state.water.ml>=state.water.goal)showToast('🎉 Meta atingida!');
+}
+function resetWater(){
+  if(!state.water)state.water={ml:0,goal:2000,lastDate:''};
+  state.water.ml=0;
+  renderWater();save();showToast('💧 Zerado!');
+}
+function editWaterGoal(){
+  const v=prompt('Meta diária em ml (250-5000):',state.water?.goal||2000);
+  if(!v)return;
+  const n=parseInt(v);
+  if(isNaN(n)||n<250||n>5000){alert('Informe entre 250 e 5000 ml.');return;}
+  if(!state.water)state.water={ml:0,goal:n,lastDate:''};
+  state.water.goal=n;
+  renderWater();save();showToast('🎯 Meta atualizada!');
+}
 
 // ── RESET ──
 function openResetModal(){document.getElementById('reset-overlay').classList.add('open');}
@@ -1609,7 +1651,7 @@ function importData(){const input=document.createElement('input');input.type='fi
   }
   if(d.goals&&Array.isArray(d.goals))goals=d.goals.slice(0,500);
   if(d.expenses&&Array.isArray(d.expenses))expenses=d.expenses.slice(0,5000);
-  ensureFixedCols();renderAll();renderGoals();renderFinanceiro();renderPanelHistory();save();saveGoals();showToast('📂 Dados carregados!');
+  ensureFixedCols();renderAll();renderFinanceiro();initPanelDate();save();saveGoals();showToast('📂 Dados carregados!');
 }catch{alert('Arquivo inválido ou corrompido!');}};r.readAsText(e.target.files[0]);};input.click();}
 
 // ── UTILS ──
@@ -1642,7 +1684,7 @@ document.getElementById('board').addEventListener('touchend',e=>{
 ['tag-overlay','col-overlay','reset-overlay','fin-overlay'].forEach(id=>{document.getElementById(id).addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});});
 document.getElementById('tag-name-input').addEventListener('keydown',e=>{if(e.key==='Enter')confirmAddTag();});
 document.getElementById('col-name-input').addEventListener('keydown',e=>{if(e.key==='Enter')confirmAddCol();});
-document.getElementById('goal-title-inp').addEventListener('keydown',e=>{if(e.key==='Enter')addGoal();});
+
 document.getElementById('sh-title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addCardFromSheet();}});
 document.getElementById('fin-val-inp').addEventListener('keydown',e=>{if(e.key==='Enter')confirmAddExpense();});
 
@@ -1695,6 +1737,85 @@ function clearSearch(){
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden&&currentUser){checkWaterDailyReset();renderWater();save();}
 });
+
+
+// ── PAINEL POR DIA ──
+let panelCurrentDate=new Date().toISOString().split('T')[0];
+
+function initPanelDate(){
+  panelCurrentDate=new Date().toISOString().split('T')[0];
+  const inp=document.getElementById('panel-date-inp');
+  if(inp)inp.value=panelCurrentDate;
+  renderDailyPanel();
+}
+
+function panelDateChanged(){
+  const inp=document.getElementById('panel-date-inp');
+  if(inp)panelCurrentDate=inp.value;
+  renderDailyPanel();
+}
+
+function panelPrevDay(){
+  const d=new Date(panelCurrentDate+'T12:00:00');
+  d.setDate(d.getDate()-1);
+  panelCurrentDate=d.toISOString().split('T')[0];
+  const inp=document.getElementById('panel-date-inp');
+  if(inp)inp.value=panelCurrentDate;
+  renderDailyPanel();
+}
+
+function panelNextDay(){
+  const d=new Date(panelCurrentDate+'T12:00:00');
+  d.setDate(d.getDate()+1);
+  panelCurrentDate=d.toISOString().split('T')[0];
+  const inp=document.getElementById('panel-date-inp');
+  if(inp)inp.value=panelCurrentDate;
+  renderDailyPanel();
+}
+
+function renderDailyPanel(){
+  const content=document.getElementById('panel-content');
+  if(!content)return;
+  
+  const d=new Date(panelCurrentDate+'T12:00:00');
+  const dateStr=d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  
+  let html=`<div style="font-size:12px;color:var(--mut);text-align:center;margin-bottom:20px;font-family:'Syne',sans-serif;font-weight:700">${dateStr.toUpperCase()}</div>`;
+  
+  // Tarefas concluídas nesse dia
+  const doneCol=state.columns.find(c=>c.id===COL_DONE);
+  const tasksToday=doneCol?doneCol.cards.filter(c=>c.doneAt===panelCurrentDate):[];
+  
+  html+=`<div class="panel-widget"><div class="pw-title">✅ Tarefas Concluídas (${tasksToday.length})</div>`;
+  if(tasksToday.length===0){
+    html+=`<div class="empty-st" style="padding:20px;font-size:12px"><div class="empty-ico">📭</div>Nenhuma tarefa</div>`;
+  }else{
+    tasksToday.forEach(t=>{
+      const timeStr=t.elapsed?fmtTime(t.elapsed):'—';
+      html+=`<div class="hist-item"><div class="hist-dot"></div><div style="flex:1"><div class="hist-title">${esc(t.title)}</div><div class="hist-meta"><span>⏱ ${timeStr}</span></div></div></div>`;
+    });
+  }
+  html+=`</div>`;
+  
+  // Água
+  html+=`<div class="panel-widget"><div class="pw-title">💧 Hidratação</div><div style="text-align:center;padding:16px"><div style="font-size:28px;color:var(--cyn);font-family:'Syne',sans-serif;font-weight:700">${state.water?.ml||0}ml</div><div style="font-size:12px;color:var(--mut);margin-top:8px">Meta: ${state.water?.goal||2000}ml</div><div style="background:var(--col);border-radius:99px;height:6px;margin-top:12px;overflow:hidden"><div style="height:100%;background:var(--cyn);border-radius:99px;width:${Math.min((state.water?.ml||0)/(state.water?.goal||2000)*100,100)}%"></div></div></div></div>`;
+  
+  // Gastos
+  const daysExp=expenses.filter(e=>e.date===panelCurrentDate);
+  const dayTotal=daysExp.reduce((s,e)=>s+e.value,0);
+  html+=`<div class="panel-widget"><div class="pw-title">💸 Gastos (R$ ${dayTotal.toLocaleString('pt-BR',{minimumFractionDigits:2})})</div>`;
+  if(daysExp.length===0){
+    html+=`<div class="empty-st" style="padding:20px;font-size:12px"><div class="empty-ico">📭</div>Sem gastos</div>`;
+  }else{
+    daysExp.forEach(e=>{
+      const cat=FIN_CAT[e.category]||FIN_CAT.outros;
+      html+=`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--brd)"><div><div style="font-size:13px;color:var(--tx)">${esc(e.desc)}</div><div style="font-size:11px;color:var(--mut)">${cat.label}</div></div><div style="font-family:'Syne',sans-serif;font-weight:700;color:var(--red)">R$ ${e.value.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>`;
+    });
+  }
+  html+=`</div>`;
+  
+  content.innerHTML=html;
+}
 
 autoLogin();
 </script>
