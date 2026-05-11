@@ -539,7 +539,7 @@ textarea,input,select{user-select:text}
         <div class="panel-widget">
           <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--tx);margin-bottom:12px">Adicionar água</div>
           <div style="display:flex;gap:8px;margin-bottom:12px">
-            <input type="number" id="w-custom" placeholder="ml" min="1" max="5000" style="flex:1;background:var(--col);border:1px solid var(--brd);border-radius:10px;padding:10px;font-size:14px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none">
+            <input type="number" id="w-custom" placeholder="ml" min="1" style="flex:1;background:var(--col);border:1px solid var(--brd);border-radius:10px;padding:10px;font-size:14px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none">
             <button class="wa-btn wa-add" onclick="addWaterCustom()" style="flex:1">Adicionar</button>
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -1596,7 +1596,7 @@ function renderWater(){
 function addWaterCustom(){
   const inp=document.getElementById('w-custom');
   const ml=parseInt(inp.value)||0;
-  if(ml<1||ml>5000){showToast('⚠️ Informe entre 1 e 5000 ml');return;}
+  if(ml<1){showToast('⚠️ Informe um valor válido');return;}
   if(!state.water)state.water={ml:0,goal:2000,lastDate:''};
   state.water.ml+=ml;
   inp.value='';
@@ -1615,10 +1615,10 @@ function resetWater(){
   renderWater();save();showToast('💧 Zerado!');
 }
 function editWaterGoal(){
-  const v=prompt('Meta diária em ml (250-5000):',state.water?.goal||2000);
+  const v=prompt('Meta diária em ml (mínimo 250):',state.water?.goal||2000);
   if(!v)return;
   const n=parseInt(v);
-  if(isNaN(n)||n<250||n>5000){alert('Informe entre 250 e 5000 ml.');return;}
+  if(isNaN(n)||n<250){alert('Informe um valor mínimo de 250 ml.');return;}
   if(!state.water)state.water={ml:0,goal:n,lastDate:''};
   state.water.goal=n;
   renderWater();save();showToast('🎯 Meta atualizada!');
