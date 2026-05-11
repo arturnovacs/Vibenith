@@ -834,7 +834,7 @@ async function logout(){
   currentUser=null;
   clearSession();
   localStorage.removeItem('vibenith_user'); // limpa chave legada se existir
-  state=JSON.parse(JSON.stringify(DS));goals=[];expenses=[];
+  state=JSON.parse(JSON.stringify(DS));expenses=[];
   closeMenu();
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
@@ -854,7 +854,7 @@ async function pushToCloud(silent){
   if(!token){setSyncStatus('err');return;}
   syncing=true;setSyncStatus('saving');
   try{
-    const payload={id:userRow(),data:{state,goals,expenses},updated_at:new Date().toISOString()};
+    const payload={id:userRow(),data:{state,expenses},updated_at:new Date().toISOString()};
     // UPSERT usando o token JWT — RLS garante que só o dono pode escrever
     const r=await fetch(`${SB_URL}/rest/v1/sync_data`,{
       method:'POST',
@@ -890,7 +890,6 @@ async function pullFromCloud(){
     if(rows.length&&rows[0].data&&Object.keys(rows[0].data).length){
       const d=rows[0].data;
       if(d.state)state=d.state;
-      if(d.goals)goals=d.goals;
       if(d.expenses)expenses=d.expenses;
       ensureFixedCols();
       state.columns.forEach(col=>col.cards.forEach(c=>{
@@ -907,30 +906,20 @@ async function pullFromCloud(){
   }catch(e){console.error('pull error:',e.message);setSyncStatus('err');showToast('⚠️ Sem conexão');}
 }
 
-// Debounce de 2s — não perde dados ao fechar aba (sendBeacon como fallback)
+// Debounce de 2s — não perde dados ao fechar aba
 function schedulePush(){
   clearTimeout(syncTimer);
   syncTimer=setTimeout(()=>pushToCloud(true),2000);
 }
 
-// ── BEACON: garante sync ao fechar a aba ──
-// navigator.sendBeacon envia a requisição mesmo se a aba for fechada imediatamente
 window.addEventListener('beforeunload',()=>{
-  if(!currentUser||!getToken())return;
-  const payload=JSON.stringify({id:userRow(),data:{state,goals,expenses},updated_at:new Date().toISOString()});
-  const blob=new Blob([payload],{type:'application/json'});
-  // sendBeacon para o endpoint de upsert
-  navigator.sendBeacon(
-    `${SB_URL}/rest/v1/sync_data`,
-    blob
-  );
-  // Nota: sendBeacon não suporta headers customizados além de Content-Type.
-  // O Supabase aceita a anon key no body apenas para o endpoint específico.
-  // Alternativa mais robusta: usar keepalive:true no fetch
+  if(!currentUser||!getToken()||syncing)return;
   const token=getToken();
-  if(token&&!syncing){
+  const payload=JSON.stringify({id:userRow(),data:{state,expenses},updated_at:new Date().toISOString()});
+  if(token){
     fetch(`${SB_URL}/rest/v1/sync_data`,{
-      method:'POST',keepalive:true,
+      method:'POST',
+      keepalive:true,
       headers:{...sbHeaders(token),'Prefer':'resolution=merge-duplicates,return=minimal'},
       body:payload
     }).catch(()=>{});
@@ -955,7 +944,7 @@ const DS={columns:[
 ],water:{ml:0,goal:2000,lastDate:''}};
 
 let state=JSON.parse(JSON.stringify(DS));
-let goals=[],expenses=[],completedHistory=[];
+let expenses=[],completedHistory=[];
 let tagCid=null,tagColId=null,dragCard=null;
 let cCnt=200,colCnt=20,gCnt=100,eCnt=100;
 let activeColIdx=0;
@@ -969,9 +958,8 @@ const FIN_CAT={alimentacao:{label:'Alimentação',icon:'🍔',color:'#ff9f43'},t
 function initApp(isNew){
   if(!isNew){
     const sv=localStorage.getItem('vibenith_v1_'+currentUser);if(sv){try{state=JSON.parse(sv);}catch(e){}}
-    const sg=localStorage.getItem('vibenith_goals_'+currentUser);if(sg){try{goals=JSON.parse(sg);}catch(e){}}
-    const se=localStorage.getItem('vibenith_exp_'+currentUser);if(se){try{expenses=JSON.parse(se);}catch(e){}}
-  }else{state=JSON.parse(JSON.stringify(DS));goals=[];expenses=[];}
+        const se=localStorage.getItem('vibenith_exp_'+currentUser);if(se){try{expenses=JSON.parse(se);}catch(e){}}
+  }else{state=JSON.parse(JSON.stringify(DS));expenses=[];}
   ensureFixedCols();
   state.columns.forEach(col=>col.cards.forEach(c=>{if(!c.status)c.status='todo';if(!c.elapsed)c.elapsed=0;if(!c.subtasks)c.subtasks=[];}));
   rebalanceColumns();
@@ -1053,7 +1041,7 @@ function rebalanceColumns(){
   const all=[];state.columns.forEach(col=>{all.push(...col.cards);col.cards=[];});
   all.forEach(card=>{const tgt=card.status==='progress'?COL_PROGRESS:card.status==='done'?COL_DONE:COL_TODO;const col=state.columns.find(c=>c.id===tgt)||state.columns[0];col.cards.push(card);});
 }
-function saveLoc(){if(currentUser){localStorage.setItem('vibenith_v1_'+currentUser,JSON.stringify(state));localStorage.setItem('vibenith_goals_'+currentUser,JSON.stringify(goals));localStorage.setItem('vibenith_exp_'+currentUser,JSON.stringify(expenses));}}
+function saveLoc(){if(currentUser){localStorage.setItem('vibenith_v1_'+currentUser,JSON.stringify(state));localStorage.setItem('vibenith_exp_'+currentUser,JSON.stringify(expenses));}}
 function save(){saveLoc();updateStats();schedulePush();}
 function saveGoals(){saveLoc();schedulePush();}
 
@@ -1632,7 +1620,7 @@ function resetAllCards(){if(!confirm('Apagar TODOS os cartões?'))return;Object.
 function resetToDefault(){if(!confirm('Restaurar padrão? Metas não serão afetadas.'))return;Object.keys(timers).forEach(stopTimerInterval);state=JSON.parse(JSON.stringify(DS));closeResetModal();renderAll();save();renderPanelHistory();showToast('🔄 Restaurado!');}
 
 // ── EXPORT / IMPORT ──
-function exportData(){const blob=new Blob([JSON.stringify({state,goals,expenses},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='vibenith-backup-'+new Date().toISOString().split('T')[0]+'.json';a.click();showToast('💾 Backup salvo!');}
+function exportData(){const blob=new Blob([JSON.stringify({state,expenses},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='vibenith-backup-'+new Date().toISOString().split('T')[0]+'.json';a.click();showToast('💾 Backup salvo!');}
 function importData(){const input=document.createElement('input');input.type='file';input.accept='.json';input.onchange=e=>{const r=new FileReader();r.onload=ev=>{try{
   const d=JSON.parse(ev.target.result);
   if(d.state&&typeof d.state==='object'&&Array.isArray(d.state.columns)){
@@ -1649,8 +1637,7 @@ function importData(){const input=document.createElement('input');input.type='fi
     });
     state=d.state;
   }
-  if(d.goals&&Array.isArray(d.goals))goals=d.goals.slice(0,500);
-  if(d.expenses&&Array.isArray(d.expenses))expenses=d.expenses.slice(0,5000);
+    if(d.expenses&&Array.isArray(d.expenses))expenses=d.expenses.slice(0,5000);
   ensureFixedCols();renderAll();renderFinanceiro();initPanelDate();save();saveGoals();showToast('📂 Dados carregados!');
 }catch{alert('Arquivo inválido ou corrompido!');}};r.readAsText(e.target.files[0]);};input.click();}
 
