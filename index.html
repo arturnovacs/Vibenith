@@ -548,6 +548,10 @@ textarea,input,select{user-select:text}
             <button class="wa-btn wa-add" onclick="addWaterQuick(1000)" style="flex:1;min-width:70px;padding:8px;font-size:12px">1L</button>
           </div>
         </div>
+        <div id="water-history" class="panel-widget">
+          <div class="pw-title">Histórico de hoje</div>
+          <div id="water-list" style="font-size:12px;color:var(--mut)">Nada adicionado ainda</div>
+        </div>
         <div class="water-acts">
           <button class="wa-btn wa-reset" onclick="resetWater()">Zerar dia</button>
           <button class="wa-btn wa-reset" onclick="editWaterGoal()">⚙️ Meta</button>
@@ -690,7 +694,11 @@ function getToken(){return sessionStorage.getItem('vib_token');}
 function storeSession(access,refresh,uid,email){
   sessionStorage.setItem('vib_token',access);
   // refresh_token no localStorage garante que o usuário não precisa logar de novo
-  if(refresh)localStorage.setItem('vib_refresh',refresh);
+  // SEMPRE atualizar refresh_token se fornecido (Supabase rotaciona a cada uso)
+  if(refresh){
+    localStorage.setItem('vib_refresh',refresh);
+    localStorage.setItem('vib_refresh_date',new Date().getTime());
+  }
   localStorage.setItem('vib_uid',uid);
   localStorage.setItem('vib_email',email);
   // copia uid para sessionStorage para leitura rápida
@@ -737,7 +745,9 @@ async function doLogin(){
   const pw=document.getElementById('li-pass').value;
   if(!email||!email.includes('@')){showAuthErr('Informe um email válido');return;}
   if(!pw){showAuthErr('Informe a senha');return;}
-  const btn=document.getElementById('li-btn');btn.disabled=true;btn.textContent='Entrando…';
+  const btn=document.getElementById('li-btn');btn.disabled=true;
+  const startTime=performance.now();
+  btn.textContent='Entrando…';
   try{
     const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{
       method:'POST',
@@ -750,7 +760,9 @@ async function doLogin(){
       showAuthErr(msg);btn.disabled=false;btn.textContent='Entrar';return;
     }
     storeSession(data.access_token,data.user.id,email);
-    currentUser=data.user.id; // usa UUID do Supabase Auth como ID único
+    currentUser=data.user.id;
+    const elapsed=Math.round(performance.now()-startTime);
+    console.log(`⏱ Login: ${elapsed}ms`);
     enterApp(false);
   }catch(e){showAuthErr('Sem conexão. Tente novamente.');btn.disabled=false;btn.textContent='Entrar';}
 }
@@ -792,6 +804,7 @@ async function refreshToken(){
   // Lê o refresh_token do localStorage (persiste entre sessões)
   const rt=localStorage.getItem('vib_refresh');
   if(!rt)return false;
+  const start=performance.now();
   try{
     const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{
       method:'POST',headers:sbHeaders(),
@@ -803,10 +816,18 @@ async function refreshToken(){
       return false;
     }
     const data=await r.json();
-    // Salva o novo par de tokens (Supabase rotaciona o refresh_token a cada uso)
-    storeSession(data.access_token,data.refresh_token,data.user.id,data.user.email);
+    // SEMPRE salvar novo refresh_token se fornecido
+    if(data.refresh_token){
+      storeSession(data.access_token,data.refresh_token,data.user.id,data.user.email);
+    }else{
+      // Se Supabase não devolveu refresh_token, salvar access_token mesmo assim
+      sessionStorage.setItem('vib_token',data.access_token);
+      localStorage.setItem('vib_refresh_date',new Date().getTime());
+    }
+    const elapsed=Math.round(performance.now()-start);
+    console.log(`⏱ Refresh token: ${elapsed}ms`);
     return true;
-  }catch{return false;}
+  }catch(e){console.error('Refresh erro:',e.message);return false;}
 }
 
 function enterApp(isNew){
@@ -941,7 +962,7 @@ const DS={columns:[
   ]},
   {id:'col2',title:'Em Andamento',color:'#4f7bff',locked:true,cards:[]},
   {id:'col3',title:'Concluído',color:'#22d3a0',locked:true,cards:[]}
-],water:{ml:0,goal:2000,lastDate:''}};
+],water:{ml:0,goal:2000,lastDate:'',history:[]}};
 
 let state=JSON.parse(JSON.stringify(DS));
 let expenses=[],completedHistory=[];
@@ -983,11 +1004,26 @@ function buildHistoryFromCards(){
   if(doneCol)doneCol.cards.forEach(c=>{if(!c.doneAt)c.doneAt=new Date().toISOString().split('T')[0];});
 }
 
+
+// Verificar se refresh_token está próximo de expirar (opcional - Supabase rota a cada uso)
+function isRefreshTokenValid(){
+  const rt=localStorage.getItem('vib_refresh');
+  const rtDate=parseInt(localStorage.getItem('vib_refresh_date')||0);
+  if(!rt)return false;
+  // Supabase refresh_token geralmente dura 1 mês
+  // Se passou mais de 25 dias, avisar (opcional)
+  const daysPassed=(new Date().getTime()-rtDate)/(1000*60*60*24);
+  return daysPassed<25;
+}
+
 async function autoLogin(){
+  console.log('🔐 Iniciando autoLogin...');
+  
   // 1. Token em memória (mesma sessão do browser) — entra direto
   const token=getToken();
   const uid=sessionStorage.getItem('vib_uid');
   if(token&&uid){
+    console.log('✅ Token em memória válido - entrando direto');
     currentUser=uid;
     enterApp(false);
     return;
@@ -996,19 +1032,23 @@ async function autoLogin(){
   // 2. Sem token em memória, mas há refresh_token salvo → renova silenciosamente
   const rt=localStorage.getItem('vib_refresh');
   if(rt){
+    console.log('🔄 Tentando renovar com refresh_token...');
     // Mostra tela de carregamento enquanto renova
-    showSplash('Carregando…');
+    showSplash('Conectando…');
     const ok=await refreshToken();
     hideSplash();
     if(ok){
+      console.log('✅ Refresh bem-sucedido!');
       currentUser=sessionStorage.getItem('vib_uid');
       enterApp(false);
       return;
     }
     // Refresh falhou (token revogado ou expirado) → pede login
+    console.warn('⚠️ Refresh falhou - pedindo novo login');
   }
 
   // 3. Sem sessão → mostra tela de login
+  console.log('❌ Sem sessão válida - mostrando tela de login');
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
 }
@@ -1566,6 +1606,14 @@ function renderWater(){
 }
 function addWater(){if(!state.water)state.water={cups:0,goal:8};if(state.water.cups>=state.water.goal){showToast('🎉 Meta atingida!');return;}state.water.cups++;if(state.water.cups===state.water.goal)showToast('🎉 Meta atingida!');else showToast('💧 +1 copo!');renderWater();save();}
 function removeWater(){if(!state.water||state.water.cups<=0)return;state.water.cups--;renderWater();save();}
+function removeWaterEntry(index){
+  if(!state.water||!state.water.history||index<0||index>=state.water.history.length)return;
+  const entry=state.water.history[index];
+  state.water.ml=Math.max(0,state.water.ml-entry.ml);
+  state.water.history.splice(index,1);
+  renderWater();save();showToast('💧 Removido: '+entry.ml+'ml');
+}
+
 function resetWater(){state.water={...state.water,cups:0};renderWater();save();showToast('💧 Zerado!');}
 function editWaterGoal(){const v=prompt('Meta de copos (1–20):',state.water?.goal||8);if(!v)return;const n=parseInt(v);if(isNaN(n)||n<1||n>20){alert('Informe entre 1 e 20.');return;}state.water={...state.water,goal:n,cups:Math.min(state.water.cups,n)};renderWater();save();showToast('🎯 Meta atualizada!');}
 
@@ -1573,13 +1621,31 @@ function editWaterGoal(){const v=prompt('Meta de copos (1–20):',state.water?.g
 
 // ── ÁGUA ──
 function renderWater(){
-  if(!state.water)state.water={ml:0,goal:2000,lastDate:''};
-  const{ml,goal}=state.water;
+  if(!state.water)state.water={ml:0,goal:2000,lastDate:'',history:[]};
+  const{ml,goal,history}=state.water;
   const el_ml=document.getElementById('w-ml'),el_goal=document.getElementById('w-goal-display'),el_bar=document.getElementById('water-bar');
   if(el_ml)el_ml.textContent=ml;
   if(el_goal)el_goal.textContent='Meta: '+goal+' ml';
   const pct=Math.min(ml/goal*100,100);
   if(el_bar)el_bar.style.width=pct+'%';
+  
+  // Renderizar histórico
+  const histList=document.getElementById('water-list');
+  if(histList){
+    if(!history||history.length===0){
+      histList.innerHTML='<div style="padding:12px;text-align:center;color:var(--mut)">Nada adicionado ainda</div>';
+    }else{
+      histList.innerHTML=history.map((h,i)=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid var(--brd);background:var(--col);margin-bottom:4px;border-radius:8px">
+          <div>
+            <div style="color:var(--tx);font-weight:600">${h.ml}ml</div>
+            <div style="font-size:11px;color:var(--mut)">${new Date(h.time).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+          </div>
+          <button onclick="removeWaterEntry(${i})" style="padding:6px 10px;background:var(--red);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px">✕</button>
+        </div>
+      `).join('');
+    }
+  }
 }
 function addWaterCustom(){
   const inp=document.getElementById('w-custom');
@@ -1592,14 +1658,17 @@ function addWaterCustom(){
   if(state.water.ml>=state.water.goal)showToast('🎉 Meta atingida!');
 }
 function addWaterQuick(ml){
-  if(!state.water)state.water={ml:0,goal:2000,lastDate:''};
+  if(!state.water)state.water={ml:0,goal:2000,lastDate:'',history:[]};
   state.water.ml+=ml;
+  if(!state.water.history)state.water.history=[];
+  state.water.history.push({ml,time:new Date().toISOString()});
   renderWater();save();showToast('💧 +'+ml+' ml!');
   if(state.water.ml>=state.water.goal)showToast('🎉 Meta atingida!');
 }
 function resetWater(){
-  if(!state.water)state.water={ml:0,goal:2000,lastDate:''};
+  if(!state.water)state.water={ml:0,goal:2000,lastDate:'',history:[]};
   state.water.ml=0;
+  state.water.history=[];
   renderWater();save();showToast('💧 Zerado!');
 }
 function editWaterGoal(){
@@ -1607,7 +1676,7 @@ function editWaterGoal(){
   if(!v)return;
   const n=parseInt(v);
   if(isNaN(n)||n<250){alert('Informe um valor mínimo de 250 ml.');return;}
-  if(!state.water)state.water={ml:0,goal:n,lastDate:''};
+  if(!state.water)state.water={ml:0,goal:n,lastDate:'',history:[]};
   state.water.goal=n;
   renderWater();save();showToast('🎯 Meta atualizada!');
 }
