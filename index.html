@@ -898,8 +898,14 @@ function userRow(){return currentUser;} // currentUser = UUID do Supabase Auth
 
 async function pushToCloud(silent){
   if(!currentUser||syncing)return;
-  const token=getToken();
-  if(!token){setSyncStatus('err');return;}
+  let token=getToken();
+  // Se nao tem token, tenta renovar antes de desistir
+  if(!token){
+    const ok=await refreshToken();
+    if(!ok){setSyncStatus('err');return;}
+    token=getToken();
+    if(!token){setSyncStatus('err');return;}
+  }
   syncing=true;setSyncStatus('saving');
   try{
     const payload={id:userRow(),data:{state,expenses},updated_at:new Date().toISOString()};
@@ -924,8 +930,14 @@ async function pushToCloud(silent){
 
 async function pullFromCloud(){
   if(!currentUser)return;
-  const token=getToken();
-  if(!token){setSyncStatus('err');return;}
+  let token=getToken();
+  // Se nao tem token, tenta renovar antes de desistir
+  if(!token){
+    const ok=await refreshToken();
+    if(!ok){setSyncStatus('err');return;}
+    token=getToken();
+    if(!token){setSyncStatus('err');return;}
+  }
   setSyncStatus('saving');
   try{
     const r=await fetch(
@@ -1065,7 +1077,7 @@ async function autoLogin(){
     hideSplash();
     if(ok){
       console.log('✅ Refresh bem-sucedido!');
-      currentUser=sessionStorage.getItem('vib_uid');
+      currentUser=sessionStorage.getItem('vib_uid')||localStorage.getItem('vib_uid');
       enterApp(false);
       return;
     }
