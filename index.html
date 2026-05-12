@@ -689,6 +689,31 @@ function sbHeaders(token){
 
 // access_token → sessionStorage (dura enquanto o browser está aberto)
 // refresh_token, uid, email → localStorage (persiste entre sessões)
+
+// ── AUTO-REFRESH DO TOKEN A CADA 50 MINUTOS ──
+// Supabase access_token dura 1 hora, então renovamos antes de expirar
+let refreshTokenInterval=null;
+function startAutoRefreshToken(){
+  if(refreshTokenInterval)clearInterval(refreshTokenInterval);
+  // Renovar a cada 50 minutos (3000 segundos)
+  refreshTokenInterval=setInterval(async()=>{
+    if(!currentUser)return;
+    const token=getToken();
+    if(token){
+      console.log('🔄 Auto-refresh: renovando token...');
+      await refreshToken();
+    }
+  },50*60*1000);
+  console.log('⏱ Auto-refresh iniciado (50min)');
+}
+function stopAutoRefreshToken(){
+  if(refreshTokenInterval){
+    clearInterval(refreshTokenInterval);
+    refreshTokenInterval=null;
+    console.log('⏹ Auto-refresh parado');
+  }
+}
+
 function getToken(){return sessionStorage.getItem('vib_token');}
 
 function storeSession(access,refresh,uid,email){
@@ -759,7 +784,7 @@ async function doLogin(){
       const msg=data.error_description||data.msg||'Email ou senha incorretos';
       showAuthErr(msg);btn.disabled=false;btn.textContent='Entrar';return;
     }
-    storeSession(data.access_token,data.user.id,email);
+    storeSession(data.access_token,data.refresh_token,data.user.id,email);
     currentUser=data.user.id;
     const elapsed=Math.round(performance.now()-startTime);
     console.log(`⏱ Login: ${elapsed}ms`);
@@ -840,10 +865,12 @@ function enterApp(isNew){
   if(ub){ub.textContent='👤 '+displayName;ub.style.display='block';}
   const mu=document.getElementById('menu-user');
   if(mu)mu.textContent='Logado como '+displayName;
+  startAutoRefreshToken();
   initApp(isNew);
 }
 
 async function logout(){
+  stopAutoRefreshToken();
   if(!confirm('Sair da conta? Seus dados estão salvos na nuvem.'))return;
   // Revoga o token no servidor (invalidando a sessão)
   const token=getToken();
@@ -1010,10 +1037,9 @@ function isRefreshTokenValid(){
   const rt=localStorage.getItem('vib_refresh');
   const rtDate=parseInt(localStorage.getItem('vib_refresh_date')||0);
   if(!rt)return false;
-  // Supabase refresh_token geralmente dura 1 mês
-  // Se passou mais de 25 dias, avisar (opcional)
+  // Refresh_token configurado para 30 dias no Supabase
   const daysPassed=(new Date().getTime()-rtDate)/(1000*60*60*24);
-  return daysPassed<25;
+  return daysPassed<30;
 }
 
 async function autoLogin(){
