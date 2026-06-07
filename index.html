@@ -680,6 +680,14 @@ const SB_URL='https://ybyrlxijeoitdofbifhb.supabase.co';
 const SB_KEY='sb_publishable_LCrwdnZiUsrUevaMa2pE3A_nyvPQsBL';
 let syncTimer=null,syncing=false,lastSyncedAt=null,currentUser=null;
 
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║                         VIBENITH v18                                ║
+// ║         App de produtividade · HTML único · Supabase Auth           ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 1 · AUTENTICAÇÃO — Helpers do Supabase                       │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── SUPABASE AUTH HELPERS ──
 function sbHeaders(token){
   const h={'Content-Type':'application/json','apikey':SB_KEY};
@@ -690,6 +698,9 @@ function sbHeaders(token){
 // access_token → sessionStorage (dura enquanto o browser está aberto)
 // refresh_token, uid, email → localStorage (persiste entre sessões)
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 2 · AUTO-REFRESH — Renovação automática do token             │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── AUTO-REFRESH DO TOKEN A CADA 50 MINUTOS ──
 // Supabase access_token dura 1 hora, então renovamos antes de expirar
 let refreshTokenInterval=null;
@@ -740,6 +751,9 @@ function clearSession(){
   localStorage.removeItem('vib_email');
 }
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 3 · AUTH UI — Interface de login e cadastro                  │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── AUTH UI ──
 function switchAuthTab(tab){
   const isLogin=tab==='login';
@@ -892,6 +906,9 @@ async function logout(){
   document.getElementById('li-btn').disabled=false;document.getElementById('li-btn').textContent='Entrar';
 }
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 4 · CLOUD SYNC — Sincronização com Supabase                  │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── CLOUD SYNC (com Supabase Auth JWT) ──
 // userRow: cada usuário tem sua linha identificada pelo UUID do Auth
 function userRow(){return currentUser;} // currentUser = UUID do Supabase Auth
@@ -993,6 +1010,9 @@ function setSyncStatus(s){
   else lbl.textContent='Sem conexão';
 }
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 5 · DATA — Estado global, persistência e inicialização       │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── DATA ──
 const DS={columns:[
   {id:'col1',title:'Tarefas',color:'#ffc542',locked:true,cards:[
@@ -1014,6 +1034,9 @@ let finPeriod='mes';
 const CAT={saude:{label:'💪 Saúde',bg:'rgba(34,211,160,.13)',c:'var(--grn)',b:'rgba(34,211,160,.27)'},carreira:{label:'💼 Carreira',bg:'rgba(79,123,255,.13)',c:'var(--acc)',b:'rgba(79,123,255,.27)'},financas:{label:'💰 Finanças',bg:'rgba(255,197,66,.13)',c:'var(--ylw)',b:'rgba(255,197,66,.27)'},estudos:{label:'📚 Estudos',bg:'rgba(167,139,250,.13)',c:'var(--pur)',b:'rgba(167,139,250,.27)'},pessoal:{label:'🌱 Pessoal',bg:'rgba(34,211,238,.13)',c:'var(--cyn)',b:'rgba(34,211,238,.27)'},viagem:{label:'✈️ Viagem',bg:'rgba(255,82,99,.13)',c:'var(--red)',b:'rgba(255,82,99,.27)'},outro:{label:'⭐ Outro',bg:'rgba(255,255,255,.07)',c:'var(--mut)',b:'var(--brd)'}};
 const FIN_CAT={alimentacao:{label:'Alimentação',icon:'🍔',color:'#ff9f43'},transporte:{label:'Transporte',icon:'🚗',color:'#54a0ff'},moradia:{label:'Moradia',icon:'🏠',color:'#a78bfa'},saude:{label:'Saúde',icon:'💊',color:'#22d3a0'},lazer:{label:'Lazer',icon:'🎮',color:'#ffc542'},educacao:{label:'Educação',icon:'📚',color:'#4f7bff'},vestuario:{label:'Vestuário',icon:'👕',color:'#ff6b9d'},outros:{label:'Outros',icon:'📦',color:'#8a94b8'}};
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 6 · INIT — Entrada no app e inicialização                    │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── INIT ──
 function initApp(isNew){
   if(!isNew){
@@ -1121,8 +1144,10 @@ function rebalanceColumns(){
 }
 function saveLoc(){if(currentUser){localStorage.setItem('vibenith_v1_'+currentUser,JSON.stringify(state));localStorage.setItem('vibenith_exp_'+currentUser,JSON.stringify(expenses));}}
 function save(){saveLoc();updateStats();schedulePush();}
-function saveGoals(){saveLoc();schedulePush();}
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 7 · NAVEGAÇÃO — Abas, menu e roteamento de telas             │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── NAVIGATION ──
 function gotoScreen(id,btn){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -1151,6 +1176,9 @@ function renderSubNav(){
 }
 function showColumn(idx){activeColIdx=idx;const b=document.getElementById('board');b.style.transform=`translateX(-${idx*100}%)`;renderSubNav();}
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 8 · KANBAN — Renderização de colunas e cards                 │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── RENDER ──
 function renderAll(){
   const board=document.getElementById('board');board.innerHTML='';
@@ -1224,7 +1252,10 @@ function buildCard(card,colId){
   `;
   if(st==='progress'){if(timers[card.id]?.running)startTimerInterval(card.id);updateTimerDisplay(card.id);}
 
-  // ── DRAG & DROP (desktop) ──
+  // ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 9 · DRAG & DROP + MOVER — Desktop e mobile                  │
+// └──────────────────────────────────────────────────────────────────────┘
+// ── DRAG & DROP (desktop) ──
   el.draggable=true;
   el.addEventListener('dragstart',e=>{
     dragCard={cardId:card.id,fromColId:colId};
@@ -1273,6 +1304,9 @@ function moveCard(cardId,fromColId,toColId){
   setStatus(fromColId,cardId,ns);
 }
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 10 · SUBTASKS — Subtarefas e checkboxes                      │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── SUBTASKS ──
 // Modo leitura para cartões concluídos
 function buildSubtasksDoneHtml(card){
@@ -1315,22 +1349,32 @@ function addSubtask(colId,cardId){
   if(!card.subtasks)card.subtasks=[];
   card.subtasks.push({text,done:false});
   inp.value='';
-  document.getElementById('card-'+cardId).replaceWith(buildCard(card,colId));
+  const realCol=state.columns.find(c=>c.cards.some(x=>x.id===cardId));
+  const el=document.getElementById('card-'+cardId);
+  if(el&&realCol)el.replaceWith(buildCard(card,realCol.id));
   save();
 }
 function toggleSubtask(colId,cardId,idx){
-  const card=findCard(cardId);if(!card||!card.subtasks)return;
+  const card=findCard(cardId);if(!card||!card.subtasks||!card.subtasks[idx])return;
   card.subtasks[idx].done=!card.subtasks[idx].done;
-  document.getElementById('card-'+cardId).replaceWith(buildCard(card,colId));
+  // Descobre a coluna real do card (pode ter mudado)
+  const realCol=state.columns.find(c=>c.cards.some(x=>x.id===cardId));
+  const el=document.getElementById('card-'+cardId);
+  if(el&&realCol)el.replaceWith(buildCard(card,realCol.id));
   save();
 }
 function delSubtask(colId,cardId,idx){
-  const card=findCard(cardId);if(!card||!card.subtasks)return;
+  const card=findCard(cardId);if(!card||!card.subtasks||!card.subtasks[idx])return;
   card.subtasks.splice(idx,1);
-  document.getElementById('card-'+cardId).replaceWith(buildCard(card,colId));
+  const realCol=state.columns.find(c=>c.cards.some(x=>x.id===cardId));
+  const el=document.getElementById('card-'+cardId);
+  if(el&&realCol)el.replaceWith(buildCard(card,realCol.id));
   save();
 }
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 11 · TIMER — Cronômetro por card                             │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── TIMER ──
 function buildTimerHtml(card){return `<div class="timer-box" id="timer-${card.id}"><div class="timer-display" id="tdisp-${card.id}">${fmtTime(card.elapsed||0)}</div><div class="timer-btns"><button class="timer-btn t-play" onclick="toggleTimer('${card.id}')"><svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" id="tplay-ico-${card.id}"><polygon points="5,3 19,12 5,21"/></svg></button><button class="timer-btn t-reset" onclick="resetTimer('${card.id}')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="3 10 3 3 10 3"/><path d="M21 13a9 9 0 1 0-1.636 5.254"/></svg></button></div></div>`;}
 function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;}
@@ -1352,6 +1396,9 @@ function resetTimer(id){stopTimerInterval(id);const c=findCard(id);if(c)c.elapse
 function updateTimerDisplay(id){const d=document.getElementById('tdisp-'+id);const c=findCard(id);if(d&&c)d.textContent=fmtTime(c.elapsed||0);}
 function findCard(id){for(const col of state.columns){const c=col.cards.find(c=>c.id===id);if(c)return c;}return null;}
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 12 · STATUS & AÇÕES — Mover cards, editar, deletar           │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── SET STATUS + AUTO MOVE + RECORD DONE ──
 function setStatus(colId,cardId,ns){
   if(ns!=='progress'&&timers[cardId]?.running)stopTimerInterval(cardId);
@@ -1368,6 +1415,7 @@ function setStatus(colId,cardId,ns){
   const el=document.getElementById('card-'+cardId);
   if(el){el.style.transition='opacity .22s,transform .22s';el.style.opacity='0';el.style.transform='translateX(16px)';}
   setTimeout(()=>{
+    if(!srcCol)return;
     srcCol.cards=srcCol.cards.filter(c=>c.id!==cardId);
     const tgt=state.columns.find(c=>c.id===tgtColId);
     if(tgt){ns==='done'?tgt.cards.push(card):tgt.cards.unshift(card);}
@@ -1404,9 +1452,12 @@ function renameCol(colId,v){const col=state.columns.find(c=>c.id===colId);if(col
 function delCard(colId,cardId){
   if(!confirm('Excluir este cartão?'))return;
   stopTimerInterval(cardId);delete timers[cardId];
-  const col=state.columns.find(c=>c.id===colId);col.cards=col.cards.filter(c=>c.id!==cardId);
+  // Acha a coluna real do card (pode ter mudado de coluna)
+  const col=state.columns.find(c=>c.cards.some(x=>x.id===cardId))||state.columns.find(c=>c.id===colId);
+  if(!col)return;
+  col.cards=col.cards.filter(c=>c.id!==cardId);
   const el=document.getElementById('card-'+cardId);
-  if(el){el.style.cssText='opacity:0;transform:scale(.9);transition:.2s';setTimeout(()=>{el.remove();const cnt=document.getElementById('cnt-'+colId);if(cnt)cnt.textContent=col.cards.length;save();renderSubNav();},200);}else{save();renderSubNav();}
+  if(el){el.style.cssText='opacity:0;transform:scale(.9);transition:.2s';setTimeout(()=>{el.remove();const cnt=document.getElementById('cnt-'+col.id);if(cnt)cnt.textContent=col.cards.length;save();renderSubNav();renderPanelHistory();},200);}else{save();renderSubNav();renderPanelHistory();}
   showToast('🗑 Cartão excluído');
 }
 function deleteCol(colId){const col=state.columns.find(c=>c.id===colId);if(col?.locked){showToast('⚠️ Coluna fixa');return;}if(!confirm(`Excluir "${col.title}"?`))return;state.columns=state.columns.filter(c=>c.id!==colId);renderAll();save();}
@@ -1427,8 +1478,8 @@ function addCard(colId){
 }
 function openTagModal(colId,cardId){tagColId=colId;tagCid=cardId;document.getElementById('tag-name-input').value='';document.getElementById('tag-overlay').classList.add('open');setTimeout(()=>document.getElementById('tag-name-input').focus(),300);}
 function closeTagModal(){document.getElementById('tag-overlay').classList.remove('open');}
-function confirmAddTag(){const name=document.getElementById('tag-name-input').value.trim();const color=document.getElementById('tag-color-input').value;if(!name)return;const col=state.columns.find(c=>c.id===tagColId);const card=col.cards.find(c=>c.id===tagCid);if(!card.tags.find(t=>t.name===name))card.tags.push({name,color});closeTagModal();document.getElementById('card-'+tagCid).replaceWith(buildCard(card,tagColId));save();}
-function removeTag(colId,cardId,tagName){const col=state.columns.find(c=>c.id===colId);const card=col.cards.find(c=>c.id===cardId);card.tags=card.tags.filter(t=>t.name!==tagName);document.getElementById('card-'+cardId).replaceWith(buildCard(card,colId));save();}
+function confirmAddTag(){const name=document.getElementById('tag-name-input').value.trim();const color=document.getElementById('tag-color-input').value;if(!name)return;const col=state.columns.find(c=>c.id===tagColId);const card=col.cards.find(c=>c.id===tagCid);if(!card)return;if(!card.tags.find(t=>t.name===name))card.tags.push({name,color});closeTagModal();const realCol=state.columns.find(c=>c.cards.some(x=>x.id===tagCid));const el=document.getElementById('card-'+tagCid);if(el&&realCol)el.replaceWith(buildCard(card,realCol.id));save();}
+function removeTag(colId,cardId,tagName){const col=state.columns.find(c=>c.id===colId);const card=col?.cards.find(c=>c.id===cardId)||findCard(cardId);if(!card)return;card.tags=card.tags.filter(t=>t.name!==tagName);const realCol=state.columns.find(c=>c.cards.some(x=>x.id===cardId));const el=document.getElementById('card-'+cardId);if(el&&realCol)el.replaceWith(buildCard(card,realCol.id));save();}
 function openColModal(){document.getElementById('col-name-input').value='';document.getElementById('col-overlay').classList.add('open');setTimeout(()=>document.getElementById('col-name-input').focus(),300);}
 function closeColModal(){document.getElementById('col-overlay').classList.remove('open');}
 function confirmAddCol(){const name=document.getElementById('col-name-input').value.trim();const color=document.getElementById('col-color-input').value;if(!name)return;state.columns.push({id:'col'+(++colCnt),title:name,color,locked:false,cards:[]});closeColModal();renderAll();save();}
@@ -1436,6 +1487,9 @@ function openSheet(){document.getElementById('add-sheet').classList.add('open');
 function closeSheet(){document.getElementById('add-sheet').classList.remove('open');document.getElementById('sheet-ov').classList.remove('open');['sh-title','sh-desc','sh-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});}
 function addCardFromSheet(){const tEl=document.getElementById('sh-title');const title=tEl.value.trim();if(!title){tEl.focus();tEl.style.borderColor='var(--red)';setTimeout(()=>tEl.style.borderColor='',1200);return;}const colId=document.getElementById('sh-col').value||state.columns[0]?.id;if(!colId)return;const status=colId===COL_PROGRESS?'progress':colId===COL_DONE?'done':'todo';const card={id:'c'+(++cCnt),title,desc:document.getElementById('sh-desc').value.trim(),tags:[],date:document.getElementById('sh-date').value,status,elapsed:0,subtasks:[]};if(status==='done')card.doneAt=new Date().toISOString().split('T')[0];const col=state.columns.find(c=>c.id===colId);col.cards.unshift(card);closeSheet();rerCol(colId);renderSubNav();save();showToast('📝 Tarefa adicionada!');}
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 13 · PAINEL — Estatísticas e histórico                       │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── STATS + PANEL HISTORY ──
 function updateStats(){
   let total=0,prog=0;
@@ -1455,27 +1509,10 @@ function updateStats(){
 }
 
 function renderPanelHistory(){
-  const list=document.getElementById('hist-list');if(!list)return;
-  const now=new Date();const cutoff=new Date(now);cutoff.setDate(cutoff.getDate()-30);
-  const doneCol=state.columns.find(c=>c.id===COL_DONE);
-  const items=doneCol?doneCol.cards.filter(c=>{if(!c.doneAt)return true;const d=new Date(c.doneAt+'T12:00:00');return d>=cutoff;}).sort((a,b)=>{ if(!a.doneAt&&!b.doneAt)return 0; if(!a.doneAt)return 1; if(!b.doneAt)return -1; return b.doneAt.localeCompare(a.doneAt); }):[];
-  const hc=document.getElementById('hist-count');if(hc)hc.textContent=items.length+' tarefa'+(items.length!==1?'s':'');
-  if(!items.length){list.innerHTML=`<div class="empty-st" style="padding:20px"><div class="empty-ico" style="font-size:28px">📭</div><div class="empty-tx" style="font-size:12px">Nenhuma tarefa concluída ainda</div></div>`;return;}
-  list.innerHTML=items.map(c=>{
-    const dateStr=c.doneAt?new Date(c.doneAt+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}):'—';
-    const timeStr=c.elapsed?fmtTime(c.elapsed):'';
-    return`<div class="hist-item">
-      <div class="hist-dot"></div>
-      <div style="flex:1">
-        <div class="hist-title">${esc(c.title)}</div>
-        <div class="hist-meta">
-          <span>📅 ${dateStr}</span>
-          ${timeStr?`<span>⏱ ${timeStr}</span>`:''}
-          ${c.tags.map(t=>`<span class="hist-tag">${esc(t.name)}</span>`).join('')}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+  // O painel agora é por dia — atualiza se a tela painel estiver ativa
+  if(typeof panelCurrentDate!=='undefined'&&document.getElementById('panel-content')){
+    renderDailyPanel();
+  }
 }
 
 function renderPie(){
@@ -1490,6 +1527,9 @@ function renderPie(){
   const sub=document.createElementNS('http://www.w3.org/2000/svg','text');sub.setAttribute('x',cx);sub.setAttribute('y',cy+12);sub.setAttribute('text-anchor','middle');sub.setAttribute('font-size','8');sub.setAttribute('fill','#5a6280');sub.setAttribute('font-family','Outfit');sub.textContent='tarefas';svg.appendChild(sub);
 }
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 14 · FINANCEIRO — Gastos, categorias, orçamento              │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── FINANCEIRO ──
 function setFinPeriod(p,btn){
   finPeriod=p;
@@ -1633,31 +1673,6 @@ function confirmAddExpense(){
 }
 function delExpense(id){expenses=expenses.filter(e=>e.id!==id);saveLoc();schedulePush();renderFinanceiro();showToast('🗑 Gasto removido');}
 
-// ── WATER ──
-function renderWater(){
-  if(!state.water)state.water={cups:0,goal:8};const{cups,goal}=state.water;
-  const ec=document.getElementById('w-cups'),eg=document.getElementById('w-goal'),em=document.getElementById('w-ml'),eb=document.getElementById('water-bar'),ecp=document.getElementById('water-cups');
-  if(ec)ec.textContent=cups;if(eg)eg.textContent=goal;
-  if(em)em.textContent=`${cups*250} ml de ${goal*250} ml`;
-  if(eb)eb.style.width=Math.min(cups/goal*100,100)+'%';
-  if(ecp){ecp.innerHTML='';for(let i=0;i<goal;i++){const cup=document.createElement('div');cup.className='cup'+(i<cups?' filled':'');cup.onclick=()=>{i<cups?removeWater():addWater();};ecp.appendChild(cup);}}
-}
-function addWater(){if(!state.water)state.water={cups:0,goal:8};if(state.water.cups>=state.water.goal){showToast('🎉 Meta atingida!');return;}state.water.cups++;if(state.water.cups===state.water.goal)showToast('🎉 Meta atingida!');else showToast('💧 +1 copo!');renderWater();save();}
-function removeWater(){if(!state.water||state.water.cups<=0)return;state.water.cups--;renderWater();save();}
-function removeWaterEntry(index){
-  if(!state.water||!state.water.history||index<0||index>=state.water.history.length)return;
-  const entry=state.water.history[index];
-  state.water.ml=Math.max(0,state.water.ml-entry.ml);
-  state.water.history.splice(index,1);
-  renderWater();save();showToast('💧 Removido: '+entry.ml+'ml');
-}
-
-function resetWater(){state.water={...state.water,cups:0};renderWater();save();showToast('💧 Zerado!');}
-function editWaterGoal(){const v=prompt('Meta de copos (1–20):',state.water?.goal||8);if(!v)return;const n=parseInt(v);if(isNaN(n)||n<1||n>20){alert('Informe entre 1 e 20.');return;}state.water={...state.water,goal:n,cups:Math.min(state.water.cups,n)};renderWater();save();showToast('🎯 Meta atualizada!');}
-
-// ── GOALS ──
-
-// ── ÁGUA ──
 function renderWater(){
   if(!state.water)state.water={ml:0,goal:2000,lastDate:'',history:[]};
   const{ml,goal,history}=state.water;
@@ -1703,6 +1718,13 @@ function addWaterQuick(ml){
   renderWater();save();showToast('💧 +'+ml+' ml!');
   if(state.water.ml>=state.water.goal)showToast('🎉 Meta atingida!');
 }
+function removeWaterEntry(index){
+  if(!state.water||!state.water.history||index<0||index>=state.water.history.length)return;
+  const entry=state.water.history[index];
+  state.water.ml=Math.max(0,state.water.ml-entry.ml);
+  state.water.history.splice(index,1);
+  renderWater();save();showToast('💧 Removido: '+entry.ml+'ml');
+}
 function resetWater(){
   if(!state.water)state.water={ml:0,goal:2000,lastDate:'',history:[]};
   state.water.ml=0;
@@ -1719,6 +1741,9 @@ function editWaterGoal(){
   renderWater();save();showToast('🎯 Meta atualizada!');
 }
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 16 · RESET & BACKUP — Exportar, importar, resetar dados      │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── RESET ──
 function openResetModal(){document.getElementById('reset-overlay').classList.add('open');}
 function closeResetModal(){document.getElementById('reset-overlay').classList.remove('open');}
@@ -1745,9 +1770,12 @@ function importData(){const input=document.createElement('input');input.type='fi
     state=d.state;
   }
     if(d.expenses&&Array.isArray(d.expenses))expenses=d.expenses.slice(0,5000);
-  ensureFixedCols();renderAll();renderFinanceiro();initPanelDate();save();saveGoals();showToast('📂 Dados carregados!');
+  ensureFixedCols();renderAll();renderFinanceiro();initPanelDate();save();showToast('📂 Dados carregados!');
 }catch{alert('Arquivo inválido ou corrompido!');}};r.readAsText(e.target.files[0]);};input.click();}
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 17 · UTILITÁRIOS — Helpers gerais e eventos globais          │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── UTILS ──
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function ar(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
@@ -1783,7 +1811,6 @@ document.getElementById('sh-title').addEventListener('keydown',e=>{if(e.key==='E
 document.getElementById('fin-val-inp').addEventListener('keydown',e=>{if(e.key==='Enter')confirmAddExpense();});
 
 
-// ── RESET DIÁRIO DA ÁGUA ──
 function checkWaterDailyReset(){
   if(!state.water)state.water={cups:0,goal:8,lastDate:''};
   const today=new Date().toISOString().split('T')[0];
@@ -1794,7 +1821,6 @@ function checkWaterDailyReset(){
   state.water.lastDate=today;
 }
 
-// ── ORÇAMENTO MENSAL ──
 function editBudget(){
   const current=state.budget||'';
   const v=prompt('Orçamento mensal em R$ (0 para remover):',current);
@@ -1806,7 +1832,6 @@ function editBudget(){
   showToast(n>0?'💰 Orçamento definido!':'💰 Orçamento removido');
 }
 
-// ── BUSCA DE TAREFAS ──
 function filterCards(q){
   const query=q.trim().toLowerCase();
   const clr=document.getElementById('search-clear');
@@ -1827,12 +1852,15 @@ function clearSearch(){
   if(inp){inp.value='';filterCards('');}
 }
 
-// ── VISIBILITYCHANGE: reseta água ao reabrir app ──
+// ── VISIBILITYCHANGE ──
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden&&currentUser){checkWaterDailyReset();renderWater();save();}
 });
 
 
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │  SEÇÃO 18 · PAINEL POR DIA — Histórico navegável por data           │
+// └──────────────────────────────────────────────────────────────────────┘
 // ── PAINEL POR DIA ──
 let panelCurrentDate=new Date().toISOString().split('T')[0];
 
