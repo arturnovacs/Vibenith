@@ -1647,14 +1647,20 @@ function spawnRecurrence(card){
 }
 function setStatus(colId,cardId,ns){
   if(ns!=='progress'&&timers[cardId]?.running)stopTimerInterval(cardId);
-  const srcCol=state.columns.find(c=>c.id===colId);
-  const card=srcCol?.cards.find(c=>c.id===cardId);if(!card)return;
+  // Busca a coluna REAL onde o card está agora (colId pode estar desatualizado)
+  const srcCol=state.columns.find(c=>c.cards.some(x=>x.id===cardId));
+  if(!srcCol){console.warn('Card não encontrado:',cardId);return;}
+  const card=srcCol.cards.find(c=>c.id===cardId);
+  if(!card)return;
+  const realColId=srcCol.id;
   const tgtColId=ns==='progress'?COL_PROGRESS:ns==='done'?COL_DONE:COL_TODO;
+  // Se já está na coluna de destino, não faz nada (evita duplicação/sumiço)
+  if(realColId===tgtColId&&card.status===ns){
+    return;
+  }
   card.status=ns;
-  // Record completion date when marking done
   if(ns==='done'){
     card.doneAt=new Date().toISOString().split('T')[0];
-    // Se for recorrente, cria a próxima ocorrência
     if(card.recur){
       spawnRecurrence(card);
       showToast('🔁 Próxima ocorrência criada!');
@@ -1665,11 +1671,21 @@ function setStatus(colId,cardId,ns){
   const el=document.getElementById('card-'+cardId);
   if(el){el.style.transition='opacity .22s,transform .22s';el.style.opacity='0';el.style.transform='translateX(16px)';}
   setTimeout(()=>{
-    if(!srcCol)return;
-    srcCol.cards=srcCol.cards.filter(c=>c.id!==cardId);
+    // Re-busca a coluna real DENTRO do timeout (estado pode ter mudado)
+    const currentCol=state.columns.find(c=>c.cards.some(x=>x.id===cardId));
+    if(currentCol){
+      currentCol.cards=currentCol.cards.filter(c=>c.id!==cardId);
+    }
     const tgt=state.columns.find(c=>c.id===tgtColId);
-    if(tgt){ns==='done'?tgt.cards.push(card):tgt.cards.unshift(card);}
-    rerCol(colId);if(tgtColId!==colId)rerCol(tgtColId);
+    if(tgt){
+      // Evita duplicar: remove qualquer instância antiga antes de inserir
+      tgt.cards=tgt.cards.filter(c=>c.id!==cardId);
+      ns==='done'?tgt.cards.push(card):tgt.cards.unshift(card);
+    }
+    // Re-renderiza ambas as colunas envolvidas
+    rerCol(realColId);
+    if(tgtColId!==realColId)rerCol(tgtColId);
+    if(currentCol&&currentCol.id!==realColId&&currentCol.id!==tgtColId)rerCol(currentCol.id);
     renderSubNav();
     const tIdx=state.columns.findIndex(c=>c.id===tgtColId);
     if(tIdx>=0)showColumn(tIdx);
