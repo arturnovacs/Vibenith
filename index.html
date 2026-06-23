@@ -366,6 +366,15 @@ textarea,input,select{user-select:text}
 .btn-acc{background:var(--acc);color:#fff}.btn-ghost{background:transparent;color:var(--mut);border:1px solid var(--brd)}
 .btn-danger{background:var(--red);color:#fff}
 .recur-badge{font-size:11px;margin-left:4px;opacity:.7;flex-shrink:0}
+.panel-tabs{display:flex;gap:8px;margin-bottom:16px;background:var(--col);padding:4px;border-radius:12px}
+.panel-tab{flex:1;padding:10px;border:none;background:transparent;color:var(--mut2);font-family:'Syne',sans-serif;font-weight:700;font-size:13px;border-radius:9px;cursor:pointer;transition:all .15s}
+.panel-tab.active{background:var(--acc);color:#fff}
+.trend-card{background:var(--surf);border:1px solid var(--brd);border-radius:16px;padding:18px;margin-bottom:14px}
+.trend-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--tx);margin-bottom:4px}
+.trend-sub{font-size:12px;color:var(--mut);margin-bottom:16px}
+.trend-stat{display:flex;align-items:baseline;gap:6px;margin-bottom:14px}
+.trend-stat-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800}
+.trend-stat-lbl{font-size:12px;color:var(--mut)}
 .btn-full{width:100%;justify-content:center;padding:13px}
 
 /* SIDE MENU */
@@ -482,15 +491,24 @@ textarea,input,select{user-select:text}
     <!-- PAINEL POR DIA -->
     <div class="screen" id="scr-painel">
       <div class="screen-hdr">
-        <div><div class="screen-hdr-title">Painel</div><div class="screen-hdr-sub">Histórico diário</div></div>
+        <div><div class="screen-hdr-title">Painel</div><div class="screen-hdr-sub">Histórico e tendências</div></div>
       </div>
       <div class="scr-scroll" style="padding:0 16px 24px">
-        <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
-          <button class="fpb" onclick="panelPrevDay()" style="padding:8px 12px;flex:0">←</button>
-          <input type="date" id="panel-date-inp" onchange="panelDateChanged()" style="flex:1;background:var(--col);border:1px solid var(--brd);border-radius:10px;padding:10px;font-size:14px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;color-scheme:dark">
-          <button class="fpb" onclick="panelNextDay()" style="padding:8px 12px;flex:0">→</button>
+        <div class="panel-tabs">
+          <button class="panel-tab active" id="ptab-day" onclick="switchPanelTab('day')">📅 Por dia</button>
+          <button class="panel-tab" id="ptab-trends" onclick="switchPanelTab('trends')">📈 Tendências</button>
         </div>
-        <div id="panel-content"></div>
+        <div id="panel-day-view">
+          <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+            <button class="fpb" onclick="panelPrevDay()" style="padding:8px 12px;flex:0">←</button>
+            <input type="date" id="panel-date-inp" onchange="panelDateChanged()" style="flex:1;background:var(--col);border:1px solid var(--brd);border-radius:10px;padding:10px;font-size:14px;font-family:'Outfit',sans-serif;color:var(--tx);outline:none;color-scheme:dark">
+            <button class="fpb" onclick="panelNextDay()" style="padding:8px 12px;flex:0">→</button>
+          </div>
+          <div id="panel-content"></div>
+        </div>
+        <div id="panel-trends-view" style="display:none">
+          <div id="trends-content"></div>
+        </div>
       </div>
     </div>
 
@@ -1076,7 +1094,7 @@ const DS={columns:[
   ]},
   {id:'col2',title:'Em Andamento',color:'#4f7bff',locked:true,cards:[]},
   {id:'col3',title:'Concluído',color:'#22d3a0',locked:true,cards:[]}
-],water:{ml:0,goal:2000,lastDate:'',history:[]},customCats:{}};
+],water:{ml:0,goal:2000,lastDate:'',history:[],daily:{}},customCats:{}};
 
 let state=JSON.parse(JSON.stringify(DS));
 let expenses=[],completedHistory=[];
@@ -2265,10 +2283,21 @@ document.getElementById('fin-val-inp').addEventListener('keydown',e=>{if(e.key==
 
 
 function checkWaterDailyReset(){
-  if(!state.water)state.water={cups:0,goal:8,lastDate:''};
+  if(!state.water)state.water={ml:0,goal:2000,lastDate:'',history:[]};
   const today=new Date().toISOString().split('T')[0];
   if(state.water.lastDate&&state.water.lastDate!==today){
-    state.water.cups=0;
+    // Arquiva o total do dia anterior antes de zerar (para os gráficos)
+    if(!state.water.daily)state.water.daily={};
+    if(state.water.ml>0){
+      state.water.daily[state.water.lastDate]=state.water.ml;
+    }
+    // Mantém só os últimos 30 dias arquivados
+    const days=Object.keys(state.water.daily).sort();
+    if(days.length>30){
+      days.slice(0,days.length-30).forEach(d=>delete state.water.daily[d]);
+    }
+    state.water.ml=0;
+    state.water.history=[];
     showToast('💧 Novo dia! Contador de água zerado.');
   }
   state.water.lastDate=today;
@@ -2352,6 +2381,204 @@ function panelNextDay(){
   const inp=document.getElementById('panel-date-inp');
   if(inp)inp.value=panelCurrentDate;
   renderDailyPanel();
+}
+
+// ── PAINEL: ABAS E TENDÊNCIAS ──
+function switchPanelTab(tab){
+  const dayBtn=document.getElementById('ptab-day');
+  const trendsBtn=document.getElementById('ptab-trends');
+  const dayView=document.getElementById('panel-day-view');
+  const trendsView=document.getElementById('panel-trends-view');
+  if(tab==='trends'){
+    dayBtn.classList.remove('active');
+    trendsBtn.classList.add('active');
+    dayView.style.display='none';
+    trendsView.style.display='block';
+    renderTrends();
+  }else{
+    trendsBtn.classList.remove('active');
+    dayBtn.classList.add('active');
+    trendsView.style.display='none';
+    dayView.style.display='block';
+    renderDailyPanel();
+  }
+}
+
+// Gera um gráfico de barras SVG simples
+function svgBarChart(data,opts){
+  // data: [{label, value, highlight}]
+  opts=opts||{};
+  const color=opts.color||'var(--acc)';
+  const w=opts.width||300, h=opts.height||120;
+  const pad=24, barGap=6;
+  const max=Math.max(...data.map(d=>d.value),1);
+  const n=data.length;
+  const barW=(w-pad*2-barGap*(n-1))/n;
+  let bars='', labels='';
+  data.forEach((d,i)=>{
+    const bh=Math.max((d.value/max)*(h-pad*2),d.value>0?3:0);
+    const x=pad+i*(barW+barGap);
+    const y=h-pad-bh;
+    const c=d.highlight?'var(--grn)':color;
+    bars+=`<rect x="${x}" y="${y}" width="${barW}" height="${bh}" rx="3" fill="${c}"><title>${d.label}: ${d.value}</title></rect>`;
+    if(d.value>0)bars+=`<text x="${x+barW/2}" y="${y-4}" font-size="9" fill="var(--mut2)" text-anchor="middle">${d.valueLabel||d.value}</text>`;
+    labels+=`<text x="${x+barW/2}" y="${h-pad+14}" font-size="9" fill="var(--mut)" text-anchor="middle">${d.label}</text>`;
+  });
+  return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="overflow:visible">${bars}${labels}</svg>`;
+}
+
+// Gera gráfico de linha SVG (para água)
+function svgLineChart(data,opts){
+  opts=opts||{};
+  const color=opts.color||'var(--cyn)';
+  const w=opts.width||300, h=opts.height||120, pad=24;
+  const max=Math.max(...data.map(d=>d.value),opts.goal||1);
+  const n=data.length;
+  const stepX=(w-pad*2)/Math.max(n-1,1);
+  let points=[], dots='', labels='', goalLine='';
+  data.forEach((d,i)=>{
+    const x=pad+i*stepX;
+    const y=h-pad-(d.value/max)*(h-pad*2);
+    points.push(`${x},${y}`);
+    dots+=`<circle cx="${x}" cy="${y}" r="3" fill="${color}"><title>${d.label}: ${d.value}ml</title></circle>`;
+    labels+=`<text x="${x}" y="${h-pad+14}" font-size="9" fill="var(--mut)" text-anchor="middle">${d.label}</text>`;
+  });
+  // linha da meta
+  if(opts.goal){
+    const gy=h-pad-(opts.goal/max)*(h-pad*2);
+    goalLine=`<line x1="${pad}" y1="${gy}" x2="${w-pad}" y2="${gy}" stroke="var(--mut)" stroke-width="1" stroke-dasharray="4 3" opacity="0.5"/><text x="${w-pad}" y="${gy-4}" font-size="8" fill="var(--mut)" text-anchor="end">meta</text>`;
+  }
+  const path=`<polyline points="${points.join(' ')}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="overflow:visible">${goalLine}${path}${dots}${labels}</svg>`;
+}
+
+// Helpers de data
+function ymd(d){return d.toISOString().split('T')[0];}
+function weekLabel(d){
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+}
+
+function renderTrends(){
+  const box=document.getElementById('trends-content');
+  if(!box)return;
+  const now=new Date();
+  
+  // ═══ 1. TAREFAS CONCLUÍDAS POR SEMANA (últimas 8 semanas) ═══
+  const doneCol=state.columns.find(c=>c.id===COL_DONE);
+  const doneCards=doneCol?doneCol.cards.filter(c=>c.doneAt):[];
+  const weeks=[];
+  for(let i=7;i>=0;i--){
+    const end=new Date(now);end.setDate(end.getDate()-i*7);
+    const start=new Date(end);start.setDate(start.getDate()-6);
+    const count=doneCards.filter(c=>{
+      const d=c.doneAt;return d>=ymd(start)&&d<=ymd(end);
+    }).length;
+    weeks.push({label:weekLabel(end),value:count,highlight:i===0});
+  }
+  const totalWeekTasks=weeks.reduce((s,w)=>s+w.value,0);
+  const avgWeek=(totalWeekTasks/8).toFixed(1);
+  
+  let html=`<div class="trend-card">
+    <div class="trend-title">✅ Tarefas concluídas</div>
+    <div class="trend-sub">Últimas 8 semanas</div>
+    <div class="trend-stat"><span class="trend-stat-val" style="color:var(--grn)">${totalWeekTasks}</span><span class="trend-stat-lbl">no total · média de ${avgWeek}/semana</span></div>
+    ${svgBarChart(weeks,{color:'var(--acc)'})}
+  </div>`;
+  
+  // ═══ 2. GASTOS POR MÊS (últimos 6 meses) ═══
+  const months=[];
+  for(let i=5;i>=0;i--){
+    const md=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const key=`${md.getFullYear()}-${String(md.getMonth()+1).padStart(2,'0')}`;
+    const total=expenses.filter(e=>e.date&&e.date.startsWith(key)).reduce((s,e)=>s+e.value,0);
+    months.push({label:md.toLocaleDateString('pt-BR',{month:'short'}).replace('.',''),value:Math.round(total),valueLabel:total>=1000?(total/1000).toFixed(1)+'k':Math.round(total),highlight:i===0});
+  }
+  const totalSpent=months.reduce((s,m)=>s+m.value,0);
+  const avgMonth=Math.round(totalSpent/6);
+  
+  html+=`<div class="trend-card">
+    <div class="trend-title">💸 Gastos mensais</div>
+    <div class="trend-sub">Últimos 6 meses</div>
+    <div class="trend-stat"><span class="trend-stat-val" style="color:var(--red)">R$ ${avgMonth.toLocaleString('pt-BR')}</span><span class="trend-stat-lbl">média mensal</span></div>
+    ${svgBarChart(months,{color:'var(--red)'})}
+  </div>`;
+  
+  // ═══ 3. CATEGORIAS QUE MAIS GASTAM (mês atual) ═══
+  const thisMonth=ymd(now).slice(0,7);
+  const catTotals={};
+  expenses.filter(e=>e.date&&e.date.startsWith(thisMonth)).forEach(e=>{
+    catTotals[e.category]=(catTotals[e.category]||0)+e.value;
+  });
+  const topCats=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  
+  if(topCats.length){
+    const maxCat=topCats[0][1];
+    let catBars='';
+    topCats.forEach(([key,val])=>{
+      const cat=getCat(key);
+      const pct=(val/maxCat)*100;
+      catBars+=`<div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+          <span style="color:var(--tx)">${cat.icon} ${cat.label}</span>
+          <span style="color:var(--mut2);font-weight:700">R$ ${val.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+        </div>
+        <div style="background:var(--col);border-radius:99px;height:8px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${cat.color};border-radius:99px"></div>
+        </div>
+      </div>`;
+    });
+    html+=`<div class="trend-card">
+      <div class="trend-title">🏆 Top categorias</div>
+      <div class="trend-sub">Onde você mais gastou este mês</div>
+      ${catBars}
+    </div>`;
+  }
+  
+  // ═══ 4. HIDRATAÇÃO (últimos 7 dias) ═══
+  const waterGoal=state.water?.goal||2000;
+  const daily=state.water?.daily||{};
+  const todayYmd=ymd(now);
+  const waterDays=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(now);d.setDate(d.getDate()-i);
+    const key=ymd(d);
+    // dia atual usa o valor ao vivo; dias passados usam o arquivo
+    const val=key===todayYmd?(state.water?.ml||0):(daily[key]||0);
+    waterDays.push({label:d.toLocaleDateString('pt-BR',{weekday:'short'}).slice(0,3),value:val});
+  }
+  const daysWithData=waterDays.filter(d=>d.value>0).length;
+  const avgWater=daysWithData?Math.round(waterDays.reduce((s,d)=>s+d.value,0)/daysWithData):0;
+  html+=`<div class="trend-card">
+    <div class="trend-title">💧 Hidratação</div>
+    <div class="trend-sub">Últimos 7 dias · meta ${waterGoal}ml</div>
+    <div class="trend-stat"><span class="trend-stat-val" style="color:var(--cyn)">${avgWater}ml</span><span class="trend-stat-lbl">média diária</span></div>
+    ${svgLineChart(waterDays,{color:'var(--cyn)',goal:waterGoal})}
+  </div>`;
+  
+  // ═══ 5. RESUMO GERAL ═══
+  let totalTasks=0,pendingTasks=0;
+  state.columns.forEach(col=>{
+    totalTasks+=col.cards.length;
+    if(col.id!==COL_DONE)pendingTasks+=col.cards.length;
+  });
+  const doneTotal=doneCol?doneCol.cards.length:0;
+  const completionRate=totalTasks?Math.round(doneTotal/totalTasks*100):0;
+  html+=`<div class="trend-card">
+    <div class="trend-title">📊 Visão geral</div>
+    <div class="trend-sub">Estado atual do quadro</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+      <div style="text-align:center;padding:12px;background:var(--col);border-radius:12px">
+        <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--ylw)">${pendingTasks}</div>
+        <div style="font-size:11px;color:var(--mut)">pendentes</div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--col);border-radius:12px">
+        <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--grn)">${completionRate}%</div>
+        <div style="font-size:11px;color:var(--mut)">conclusão</div>
+      </div>
+    </div>
+  </div>`;
+  
+  box.innerHTML=html;
 }
 
 function renderDailyPanel(){
