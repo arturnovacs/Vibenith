@@ -1924,11 +1924,12 @@ function parseCsvText(text){
     const rawDate=(parts[iDate]||'').trim();
     const rawDesc=(parts[iDesc]||'').trim();
     const rawValue=(parts[iValue]||'').trim();
-    const value=parseBrValue(rawValue);
+    const parsedVal=parseBrValue(rawValue);
     const date=parseBrDate(rawDate);
-    // Ignora créditos (valores positivos de entrada) — só importa gastos
-    if(!value||value<=0||!rawDesc)continue;
-    parsed.push({desc:rawDesc.slice(0,60),value,date,category:guessCategory(rawDesc)});
+    // Ignora entradas (créditos) e linhas inválidas — só importa gastos
+    if(!parsedVal.value||parsedVal.value<=0||!rawDesc)continue;
+    if(!parsedVal.isDebit)continue; // entrada/salário → ignora
+    parsed.push({desc:rawDesc.slice(0,60),value:parsedVal.value,date,category:guessCategory(rawDesc)});
   }
   
   if(parsed.length===0){
@@ -1951,9 +1952,9 @@ function splitCsvLine(line,sep){
   result.push(cur);
   return result.map(s=>s.replace(/^"|"$/g,''));
 }
-// Converte valor BR (1.234,56 ou -50,00) para número positivo
+// Converte valor BR (1.234,56 ou -50,00). Retorna {value, isDebit}
 function parseBrValue(str){
-  if(!str)return 0;
+  if(!str)return {value:0,isDebit:false};
   let s=str.replace(/[R$\s]/g,'');
   const neg=s.includes('-');
   s=s.replace(/-/g,'');
@@ -1962,9 +1963,9 @@ function parseBrValue(str){
     s=s.replace(/\./g,'').replace(',','.');
   }
   const n=parseFloat(s);
-  if(isNaN(n))return 0;
-  // Gastos costumam vir negativos no extrato → tornamos positivo
-  return Math.abs(n);
+  if(isNaN(n))return {value:0,isDebit:false};
+  // Negativo = gasto (débito). Positivo = entrada (crédito)
+  return {value:Math.abs(n),isDebit:neg};
 }
 // Converte data BR (dd/mm/yyyy) ou ISO para YYYY-MM-DD
 function parseBrDate(str){
@@ -1985,8 +1986,8 @@ function guessCategory(desc){
   const d=desc.toLowerCase();
   if(/mercado|super|padaria|restaur|ifood|lanch|pizza|food|bar |café|cafe/.test(d))return'alimentacao';
   if(/uber|99|posto|combust|gasolin|metro|metrô|onibus|ônibus|passagem/.test(d))return'transporte';
-  if(/aluguel|condom|luz|energia|água|agua|internet|gas |iptu/.test(d))return'moradia';
-  if(/farmac|drogaria|médic|medic|hospital|consulta|exame|plano de saude/.test(d))return'saude';
+  if(/aluguel|condom|luz|energia|cemig|copel|enel|light|água|agua|sabesp|internet|vivo|claro|tim|net |gas |iptu/.test(d))return'moradia';
+  if(/farmac|drogaria|drogasil|drogal|pacheco|raia|médic|medic|hospital|consulta|exame|plano de saude|saude/.test(d))return'saude';
   if(/netflix|spotify|cinema|game|steam|show|ingresso|lazer/.test(d))return'lazer';
   if(/escola|curso|livro|faculdade|udemy|alura/.test(d))return'educacao';
   if(/roupa|calçado|calcado|loja|magaz|renner|riachuelo/.test(d))return'vestuario';
